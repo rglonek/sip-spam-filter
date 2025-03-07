@@ -18,17 +18,20 @@ import (
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
 	"github.com/lithammer/shortuuid"
+	"github.com/rglonek/logger"
 	"gopkg.in/yaml.v2"
 )
 
 type SpamFilter struct {
+	LogLevel         int                  `json:"log_level" yaml:"log_level" default:"4"`
 	LocalAddr        string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
+	CountryCode      string               `json:"country_code" yaml:"country_code" default:"44"`
 	SIP              SpamFilterSip        `json:"sip" yaml:"sip"`
 	Spam             SpamFilterSpam       `json:"spam" yaml:"spam"`
-	CountryCode      string               `json:"country_code" yaml:"country_code" default:"44"`
 	blacklistNumbers map[string]blacklist // number -> blacklist
 	blacklistLock    sync.RWMutex         // if we are reloading, we lock, if we are reading, we rlock
 	parserLock       sync.Mutex           // only one parser at a time, all others will be blocked and queued
+	log              *logger.Logger
 }
 
 type SpamFilterSip struct {
@@ -40,8 +43,8 @@ type SpamFilterSip struct {
 }
 
 type SpamFilterSpam struct {
-	BlacklistPaths []string `json:"blacklist_paths" yaml:"blacklist_paths"`
 	SleepSeconds   int      `json:"sleep_seconds" yaml:"sleep_seconds"`
+	BlacklistPaths []string `json:"blacklist_paths" yaml:"blacklist_paths"`
 }
 
 type blacklist struct {
@@ -70,68 +73,78 @@ func main() {
 		log.Fatalf("Failed to marshal config: %v", err)
 	}
 	log.Printf("Loaded config:\n%s", string(configYaml))
-	err = cfg.Main()
+
+	log := logger.NewLogger()
+	log.SetLogLevel(logger.LogLevel(cfg.LogLevel))
+	log.MillisecondLogging(true)
+	err = cfg.Main(log)
 	if err != nil {
-		log.Fatal(err)
+		log.Critical(err.Error())
 	}
 }
 
-func (cfg *SpamFilter) Main() error {
-	log.Print("Parsing blacklists")
+func (cfg *SpamFilter) Main(log *logger.Logger) error {
+	if log == nil {
+		log = logger.NewLogger()
+		log.SetLogLevel(logger.LogLevel(cfg.LogLevel))
+		log.MillisecondLogging(true)
+	}
+	cfg.log = log
+	log.Info("Parsing blacklists")
 	err := cfg.parseBlacklist()
 	if err != nil {
 		return err
 	}
 
-	log.Print("Creating new userAgent")
+	log.Info("Creating new userAgent")
 	ua, err := sipgo.NewUA()
 	if err != nil {
 		return err
 	}
 
-	log.Print("Creating new client")
+	log.Info("Creating new client")
 	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.LocalAddr))
 	if err != nil {
 		return err
 	}
 
-	log.Print("Setting up OS signal handlers")
+	log.Info("Setting up OS signal handlers")
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-sigChan
-		log.Print("Received interrupt signal, shutting down")
+		log.Info("Received interrupt signal, shutting down")
 		client.Close()
 		ua.Close()
 		os.Exit(0)
 	}()
 	go func() {
 		sighupChan := make(chan os.Signal, 1)
-		signal.Notify(sighupChan, syscall.SIGHUP)
+		signal.Notify(sighupChan, syscall.SIGUSR1)
 		for {
 			<-sighupChan
-			log.Print("Received SIGHUP signal, reloading blacklists")
+			log.Info("SIGUSR1: Reloading blacklists")
 			if err := cfg.parseBlacklist(); err != nil {
-				log.Printf("Error reloading blacklists: %v", err)
+				log.Error("Error reloading blacklists: %v", err)
 			} else {
-				log.Print("Blacklists reloaded")
+				log.Info("SIGUSR1: Blacklists reloaded")
 			}
 		}
 	}()
 
-	log.Print("Creating new call handler")
+	log.Info("Creating new call handler")
 	dg := diago.NewDiago(ua, diago.WithClient(client))
 
-	log.Print("Starting call handler")
+	log.Info("Starting call handler")
 	go func() {
 		ctx := context.Background()
 		err := dg.Serve(ctx, cfg.callHandler)
 		if err != nil {
-			log.Printf("Serve failed: %v", err)
+			log.Critical("Serve failed: %v", err)
 		}
 	}()
 
-	log.Print("Registering with SIP server")
+	log.Info("Registering with SIP server")
 	err = dg.Register(context.TODO(), sip.Uri{
 		Scheme:   "sip",
 		User:     cfg.SIP.User,
@@ -146,65 +159,67 @@ func (cfg *SpamFilter) Main() error {
 	if err != nil {
 		return err
 	}
-	log.Print("Exiting")
+	log.Info("Exiting")
 	return nil
 }
 
 func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
+	log := cfg.log.WithPrefix(fmt.Sprintf("[TID=%s] ", shortuuid.New()))
 	from := inDialog.InviteRequest.From()
 	if from == nil {
-		log.Print("Incoming call: From is nil, skipping")
+		log.Info("Incoming call: From is nil, skipping")
 		return
 	}
 	callerID := from.Address.User
 	if callerID == "" {
-		log.Print("Incoming call: Caller ID is empty, skipping")
+		log.Info("Incoming call: Caller ID is empty, skipping")
 		return
 	}
 
 	newCallerID := cfg.convertToInternational(callerID)
-	log := log.New(os.Stderr, fmt.Sprintf("[TID=%s] [OCID=%s] [CID=%s]", shortuuid.New(), callerID, newCallerID), log.LstdFlags)
+	log = log.WithPrefix(fmt.Sprintf("[OCID=%s] [CID=%s] ", callerID, newCallerID))
 
 	var blacklistFile *string
 	var blacklistLineNo int
 	var blackListLine *string
 	if blacklistFile, blacklistLineNo, blackListLine = cfg.isSpam(newCallerID); blacklistFile == nil {
-		log.Printf("Not on any blacklist, skipping")
+		log.Info("Not on any blacklist, skipping")
 		return
 	}
 
-	log.Printf("Caller on blacklist file=%s line=%d: %s", *blacklistFile, blacklistLineNo, *blackListLine)
+	log.Info("Caller on blacklist file=%s line=%d: %s", *blacklistFile, blacklistLineNo, *blackListLine)
 
-	log.Printf("Trying")
+	log.Debug("Trying")
 	err := inDialog.Progress()
 	if err != nil {
-		log.Printf("Progress failed: %v", err)
+		log.Error("Progress failed: %v", err)
 		return
 	}
-	log.Printf("Answering")
+	log.Debug("Answering")
 	err = inDialog.Answer()
 	if err != nil {
-		log.Printf("Answer failed: %v", err)
+		log.Error("Answer failed: %v", err)
 		return
 	}
 
-	log.Print("Sleeping")
+	log.Debug("Sleeping")
 	time.Sleep(time.Second * time.Duration(cfg.Spam.SleepSeconds))
 
-	log.Print("Dropping call")
+	log.Debug("Dropping call")
 	inDialog.Close()
 
-	log.Print("Done")
+	log.Info("Done")
 }
 
 func (cfg *SpamFilter) parseBlacklist() error {
+	log := cfg.log.WithPrefix("parseBlacklist: ")
 	cfg.parserLock.Lock()
 	defer cfg.parserLock.Unlock()
 	newList := make(map[string]blacklist)
 	for _, path := range cfg.Spam.BlacklistPaths {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
-			log.Printf("Warning: Could not access path %s: %v", path, err)
+			log.Error("Could not access path %s: %v", path, err)
 			continue
 		}
 
@@ -216,18 +231,18 @@ func (cfg *SpamFilter) parseBlacklist() error {
 				}
 				if !info.IsDir() {
 					if err := cfg.parseFile(filePath, newList); err != nil {
-						log.Printf("Warning: Error parsing file %s: %v", filePath, err)
+						log.Error("Error parsing file %s: %v", filePath, err)
 					}
 				}
 				return nil
 			})
 			if err != nil {
-				log.Printf("Warning: Error walking directory %s: %v", path, err)
+				log.Error("Error walking directory %s: %v", path, err)
 			}
 		} else {
 			// Handle single file
 			if err := cfg.parseFile(path, newList); err != nil {
-				log.Printf("Warning: Error parsing file %s: %v", path, err)
+				log.Error("Error parsing file %s: %v", path, err)
 			}
 		}
 	}
@@ -240,6 +255,7 @@ func (cfg *SpamFilter) parseBlacklist() error {
 
 // Helper function to parse individual files
 func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) error {
+	log := cfg.log.WithPrefix(fmt.Sprintf("parseFile: %s: ", filePath))
 	file, err := os.Open(filePath)
 	if err != nil {
 		return err
@@ -268,7 +284,7 @@ func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) 
 
 		// Check if number starts with +
 		if !strings.HasPrefix(line, "+") {
-			log.Printf("Warning: Number in file %s line %d does not start with +: %s", filePath, lineNo, line)
+			log.Warn("Number in file %s line %d does not start with +: %s", filePath, lineNo, line)
 		}
 
 		newList[line] = blacklist{
