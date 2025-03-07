@@ -17,7 +17,6 @@ import (
 	"github.com/emiago/diago"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
-	"github.com/fsnotify/fsnotify"
 	"github.com/lithammer/shortuuid"
 	"gopkg.in/yaml.v2"
 )
@@ -33,16 +32,16 @@ type SpamFilter struct {
 }
 
 type SpamFilterSip struct {
-	User     string `json:"user" yaml:"user"`
-	Password string `json:"password" yaml:"password"`
-	Host     string `json:"host" yaml:"host"`
-	Port     int    `json:"port" yaml:"port"`
+	User          string `json:"user" yaml:"user"`
+	Password      string `json:"password" yaml:"password"`
+	Host          string `json:"host" yaml:"host"`
+	Port          int    `json:"port" yaml:"port"`
+	ExpirySeconds int    `json:"expiry_seconds" yaml:"expiry_seconds" default:"500"`
 }
 
 type SpamFilterSpam struct {
 	BlacklistPaths []string `json:"blacklist_paths" yaml:"blacklist_paths"`
 	SleepSeconds   int      `json:"sleep_seconds" yaml:"sleep_seconds"`
-	UseInotify     bool     `json:"use_inotify" yaml:"use_inotify"`
 }
 
 type blacklist struct {
@@ -120,14 +119,6 @@ func (cfg *SpamFilter) Main() error {
 		}
 	}()
 
-	if cfg.Spam.UseInotify {
-		log.Print("Setting up inotify for blacklist files")
-		err = cfg.setupInotify()
-		if err != nil {
-			return fmt.Errorf("error setting up inotify: %v", err)
-		}
-	}
-
 	log.Print("Creating new call handler")
 	dg := diago.NewDiago(ua, diago.WithClient(client))
 
@@ -150,6 +141,7 @@ func (cfg *SpamFilter) Main() error {
 	}, diago.RegisterOptions{
 		Username: cfg.SIP.User,
 		Password: cfg.SIP.Password,
+		Expiry:   time.Duration(cfg.SIP.ExpirySeconds) * time.Second,
 	})
 	if err != nil {
 		return err
@@ -202,34 +194,6 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	inDialog.Close()
 
 	log.Print("Done")
-}
-
-func (cfg *SpamFilter) setupInotify() error {
-	watcher, err := fsnotify.NewWatcher()
-	if err != nil {
-		return err
-	}
-	for _, path := range cfg.Spam.BlacklistPaths {
-		err = watcher.Add(path)
-		if err != nil {
-			return err
-		}
-	}
-	go func() {
-		for event := range watcher.Events {
-			// Check for Write, Create and Remove operations
-			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove) != 0 {
-				log.Printf("Blacklist file %s has been modified/created/removed, reloading", event.Name)
-				err := cfg.parseBlacklist()
-				if err != nil {
-					log.Printf("Error reloading blacklists: %v", err)
-				} else {
-					log.Print("Blacklists reloaded")
-				}
-			}
-		}
-	}()
-	return nil
 }
 
 func (cfg *SpamFilter) parseBlacklist() error {

@@ -5,9 +5,9 @@ sip:
   password: "SIPPASSWORD" # SIP password 
   host: "SIPHOST"         # SIP server hostname
   port: 5060              # SIP server port
+  expiry_seconds: 500     # SIP registration expiry seconds
 spam:
   blacklist_paths:      # Paths to blacklist files/directories
     - "./blacklist.txt"
     - "./blacklists/"
   sleep_seconds: 1      # Seconds to wait before hanging up spam calls
-  use_inotify: true    # Watch blacklist files for changes
