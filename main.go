@@ -26,6 +26,7 @@ type SpamFilter struct {
 	LocalAddr        string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
 	SIP              SpamFilterSip        `json:"sip" yaml:"sip"`
 	Spam             SpamFilterSpam       `json:"spam" yaml:"spam"`
+	CountryCode      string               `json:"country_code" yaml:"country_code" default:"44"`
 	blacklistNumbers map[string]blacklist // number -> blacklist
 	blacklistLock    sync.RWMutex         // if we are reloading, we lock, if we are reading, we rlock
 	parserLock       sync.Mutex           // only one parser at a time, all others will be blocked and queued
@@ -330,6 +331,26 @@ func (cfg *SpamFilter) isSpam(callerID string) (matchedFileName *string, matched
 }
 
 func (cfg *SpamFilter) convertToInternational(callerID string) string {
-	// TODO: Implement - convert callerID to international standard, using a + prefix
-	return callerID
+	// + is good
+	if strings.HasPrefix(callerID, "+") {
+		return callerID
+	}
+
+	// 00 - replace with +
+	if strings.HasPrefix(callerID, "00") {
+		return "+" + callerID[2:]
+	}
+
+	// if it starts from country code from config, add a plus
+	if strings.HasPrefix(callerID, cfg.CountryCode) {
+		return "+" + callerID
+	}
+
+	// if it starts with a single zero, replace it with a +countryCode
+	if strings.HasPrefix(callerID, "0") {
+		return "+" + cfg.CountryCode + callerID[1:]
+	}
+
+	// all other cases, just add a + and country code
+	return "+" + cfg.CountryCode + callerID
 }
