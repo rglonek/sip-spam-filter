@@ -1,0 +1,80 @@
+# github.com/emiago/diago v0.13.0
+## explicit; go 1.22.4
+github.com/emiago/diago
+github.com/emiago/diago/audio
+github.com/emiago/diago/media
+github.com/emiago/diago/media/sdp
+# github.com/emiago/sipgo v0.29.0
+## explicit; go 1.20
+github.com/emiago/sipgo
+github.com/emiago/sipgo/sip
+# github.com/fsnotify/fsnotify v1.8.0
+## explicit; go 1.17
+github.com/fsnotify/fsnotify
+github.com/fsnotify/fsnotify/internal
+# github.com/go-audio/riff v1.0.0
+## explicit; go 1.12
+github.com/go-audio/riff
+# github.com/gobwas/httphead v0.1.0
+## explicit; go 1.15
+github.com/gobwas/httphead
+# github.com/gobwas/pool v0.2.1
+## explicit
+github.com/gobwas/pool
+github.com/gobwas/pool/internal/pmath
+github.com/gobwas/pool/pbufio
+github.com/gobwas/pool/pbytes
+# github.com/gobwas/ws v1.3.2
+## explicit; go 1.15
+github.com/gobwas/ws
+github.com/gobwas/ws/wsutil
+# github.com/google/uuid v1.6.0
+## explicit
+github.com/google/uuid
+# github.com/icholy/digest v0.1.22
+## explicit; go 1.16
+github.com/icholy/digest
+github.com/icholy/digest/internal/param
+# github.com/lithammer/shortuuid v3.0.0+incompatible
+## explicit
+github.com/lithammer/shortuuid
+# github.com/mattn/go-colorable v0.1.13
+## explicit; go 1.15
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.20
+## explicit; go 1.15
+github.com/mattn/go-isatty
+# github.com/pion/randutil v0.1.0
+## explicit; go 1.14
+github.com/pion/randutil
+# github.com/pion/rtcp v1.2.14
+## explicit; go 1.13
+github.com/pion/rtcp
+# github.com/pion/rtp v1.8.9
+## explicit; go 1.19
+github.com/pion/rtp
+github.com/pion/rtp/codecs
+github.com/pion/rtp/codecs/av1/obu
+github.com/pion/rtp/codecs/vp9
+# github.com/rs/zerolog v1.33.0
+## explicit; go 1.15
+github.com/rs/zerolog
+github.com/rs/zerolog/internal/cbor
+github.com/rs/zerolog/internal/json
+github.com/rs/zerolog/log
+# github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b
+## explicit
+github.com/satori/go.uuid
+# github.com/zaf/g711 v1.4.0
+## explicit; go 1.20
+github.com/zaf/g711
+# golang.org/x/sys v0.24.0
+## explicit; go 1.18
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+# gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
+## explicit
+gopkg.in/hraban/opus.v2
+# gopkg.in/yaml.v2 v2.4.0
+## explicit; go 1.15
+gopkg.in/yaml.v2
