@@ -162,12 +162,13 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 		return
 	}
 
-	log := log.New(os.Stderr, fmt.Sprintf("[TID=%s] [CID=%s] ", shortuuid.New(), callerID), log.LstdFlags)
+	newCallerID := cfg.convertToInternational(callerID)
+	log := log.New(os.Stderr, fmt.Sprintf("[TID=%s] [OCID=%s] [CID=%s]", shortuuid.New(), callerID, newCallerID), log.LstdFlags)
 
 	var blacklistFile *string
 	var blacklistLineNo int
 	var blackListLine *string
-	if blacklistFile, blacklistLineNo, blackListLine = cfg.isSpam(callerID); blacklistFile == nil {
+	if blacklistFile, blacklistLineNo, blackListLine = cfg.isSpam(newCallerID); blacklistFile == nil {
 		log.Printf("Not on any blacklist, skipping")
 		return
 	}
@@ -284,14 +285,16 @@ func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) 
 }
 
 func (cfg *SpamFilter) isSpam(callerID string) (matchedFileName *string, matchedLineNo int, matchedLine *string) {
-	callerID = cfg.convertToInternational(callerID)
 	cfg.blacklistLock.RLock()
 	defer cfg.blacklistLock.RUnlock()
 	blacklist, ok := cfg.blacklistNumbers[callerID]
 	if !ok {
 		return nil, 0, nil
 	}
-	return &blacklist.fileName, blacklist.fileLineNo, &blacklist.line
+	fn := blacklist.fileName
+	ln := blacklist.fileLineNo
+	ml := blacklist.line
+	return &fn, ln, &ml
 }
 
 func (cfg *SpamFilter) convertToInternational(callerID string) string {
