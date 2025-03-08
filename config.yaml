@@ -1,4 +1,4 @@
-log_level: 4            # Log level 0=none, 1=critical, 2=error, 3=warning, 4=info, 5=debug, 6=detail
+log_level: 6            # Log level 0=none, 1=critical, 2=error, 3=warning, 4=info, 5=debug, 6=detail
 local_addr: "0.0.0.0:0"  # Local address to bind to
 country_code: "44"       # Country code to use for international numbers
 sip:

@@ -19,6 +19,7 @@ import (
 	"github.com/emiago/sipgo/sip"
 	"github.com/lithammer/shortuuid"
 	"github.com/rglonek/logger"
+	zlog "github.com/rs/zerolog/log"
 	"gopkg.in/yaml.v2"
 )
 
@@ -77,6 +78,22 @@ func main() {
 	log := logger.NewLogger()
 	log.SetLogLevel(logger.LogLevel(cfg.LogLevel))
 	log.MillisecondLogging(true)
+
+	// create a logger pipe and patch zerolog and os.Std* to use it
+	r, w, err := os.Pipe()
+	if err != nil {
+		log.Critical(err.Error())
+	}
+	os.Stdout = w
+	os.Stderr = w
+	zlog.Logger = zlog.Logger.Output(w)
+	go func() {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			log.Detail(strings.TrimSuffix(scanner.Text(), "\n"))
+		}
+	}()
+
 	err = cfg.Main(log)
 	if err != nil {
 		log.Critical(err.Error())
@@ -119,10 +136,10 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 		os.Exit(0)
 	}()
 	go func() {
-		sighupChan := make(chan os.Signal, 1)
-		signal.Notify(sighupChan, syscall.SIGUSR1)
+		sigUsr1Chan := make(chan os.Signal, 1)
+		signal.Notify(sigUsr1Chan, syscall.SIGUSR1)
 		for {
-			<-sighupChan
+			<-sigUsr1Chan
 			log.Info("SIGUSR1: Reloading blacklists")
 			if err := cfg.parseBlacklist(); err != nil {
 				log.Error("Error reloading blacklists: %v", err)
@@ -212,15 +229,13 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 }
 
 func (cfg *SpamFilter) parseBlacklist() error {
-	log := cfg.log.WithPrefix("parseBlacklist: ")
 	cfg.parserLock.Lock()
 	defer cfg.parserLock.Unlock()
 	newList := make(map[string]blacklist)
 	for _, path := range cfg.Spam.BlacklistPaths {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
-			log.Error("Could not access path %s: %v", path, err)
-			continue
+			return fmt.Errorf("could not access path %s: %v", path, err)
 		}
 
 		if fileInfo.IsDir() {
@@ -231,18 +246,18 @@ func (cfg *SpamFilter) parseBlacklist() error {
 				}
 				if !info.IsDir() {
 					if err := cfg.parseFile(filePath, newList); err != nil {
-						log.Error("Error parsing file %s: %v", filePath, err)
+						return fmt.Errorf("error parsing file %s: %v", filePath, err)
 					}
 				}
 				return nil
 			})
 			if err != nil {
-				log.Error("Error walking directory %s: %v", path, err)
+				return fmt.Errorf("error walking directory %s: %v", path, err)
 			}
 		} else {
 			// Handle single file
 			if err := cfg.parseFile(path, newList); err != nil {
-				log.Error("Error parsing file %s: %v", path, err)
+				return fmt.Errorf("error parsing file %s: %v", path, err)
 			}
 		}
 	}
