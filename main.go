@@ -44,12 +44,14 @@ type SpamFilterSip struct {
 	Password      string `json:"password" yaml:"password"`
 	Host          string `json:"host" yaml:"host"`
 	Port          int    `json:"port" yaml:"port"`
-	ExpirySeconds int    `json:"expiry_seconds" yaml:"expiry_seconds" default:"500"`
+	ExpirySeconds int    `json:"answer_delay_ms" yaml:"answer_delay_ms" default:"500"`
 }
 
 type SpamFilterSpam struct {
-	SleepSeconds   int      `json:"sleep_seconds" yaml:"sleep_seconds"`
-	BlacklistPaths []string `json:"blacklist_paths" yaml:"blacklist_paths"`
+	TryToAnswerDelayMs int      `json:"try_to_answer_delay_ms" yaml:"try_to_answer_delay_ms"`
+	AnswerDelayMs      int      `json:"answer_delay_ms" yaml:"answer_delay_ms"`
+	HangupDelayMs      int      `json:"hangup_delay_ms" yaml:"hangup_delay_ms"`
+	BlacklistPaths     []string `json:"blacklist_paths" yaml:"blacklist_paths"`
 }
 
 type SpamFilterAuditFiles struct {
@@ -236,12 +238,18 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	log.Info("Caller on blacklist file=%s line=%d: %s", *blacklistFile, blacklistLineNo, *blackListLine)
 	cfg.auditLogBlocked(newCallerID, *blacklistFile, blacklistLineNo)
 
+	log.Debug("Try-Sleeping")
+	time.Sleep(time.Millisecond * time.Duration(cfg.Spam.TryToAnswerDelayMs))
 	log.Debug("Trying")
 	err := inDialog.Progress()
 	if err != nil {
 		log.Error("Progress failed: %v", err)
 		return
 	}
+
+	log.Debug("Answer-Sleeping")
+	time.Sleep(time.Millisecond * time.Duration(cfg.Spam.AnswerDelayMs))
+
 	log.Debug("Answering")
 	err = inDialog.Answer()
 	if err != nil {
@@ -249,8 +257,8 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 		return
 	}
 
-	log.Debug("Sleeping")
-	time.Sleep(time.Second * time.Duration(cfg.Spam.SleepSeconds))
+	log.Debug("Hangup-Sleeping")
+	time.Sleep(time.Millisecond * time.Duration(cfg.Spam.HangupDelayMs))
 
 	log.Debug("Dropping call")
 	inDialog.Close()
