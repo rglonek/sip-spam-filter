@@ -24,15 +24,19 @@ import (
 )
 
 type SpamFilter struct {
-	LogLevel         int                  `json:"log_level" yaml:"log_level" default:"4"`
-	LocalAddr        string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
-	CountryCode      string               `json:"country_code" yaml:"country_code" default:"44"`
-	SIP              SpamFilterSip        `json:"sip" yaml:"sip"`
-	Spam             SpamFilterSpam       `json:"spam" yaml:"spam"`
-	blacklistNumbers map[string]blacklist // number -> blacklist
-	blacklistLock    sync.RWMutex         // if we are reloading, we lock, if we are reading, we rlock
-	parserLock       sync.Mutex           // only one parser at a time, all others will be blocked and queued
-	log              *logger.Logger
+	LogLevel            int                  `json:"log_level" yaml:"log_level" default:"4"`
+	LocalAddr           string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
+	CountryCode         string               `json:"country_code" yaml:"country_code" default:"44"`
+	SIP                 SpamFilterSip        `json:"sip" yaml:"sip"`
+	AuditFiles          SpamFilterAuditFiles `json:"audit_files" yaml:"audit_files"`
+	Spam                SpamFilterSpam       `json:"spam" yaml:"spam"`
+	blacklistNumbers    map[string]blacklist // number -> blacklist
+	blacklistLock       sync.RWMutex         // if we are reloading, we lock, if we are reading, we rlock
+	parserLock          sync.Mutex           // only one parser at a time, all others will be blocked and queued
+	log                 *logger.Logger
+	auditBlockedNumbers *os.File
+	auditAllowedNumbers *os.File
+	auditFileSIGHUPLock sync.RWMutex
 }
 
 type SpamFilterSip struct {
@@ -46,6 +50,11 @@ type SpamFilterSip struct {
 type SpamFilterSpam struct {
 	SleepSeconds   int      `json:"sleep_seconds" yaml:"sleep_seconds"`
 	BlacklistPaths []string `json:"blacklist_paths" yaml:"blacklist_paths"`
+}
+
+type SpamFilterAuditFiles struct {
+	BlockedNumbers string `json:"blocked_numbers" yaml:"blocked_numbers"`
+	AllowedNumbers string `json:"allowed_numbers" yaml:"allowed_numbers"`
 }
 
 type blacklist struct {
@@ -113,6 +122,12 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 		return err
 	}
 
+	log.Info("Opening audit files")
+	err = cfg.reopenAuditFiles()
+	if err != nil {
+		return err
+	}
+
 	log.Info("Creating new userAgent")
 	ua, err := sipgo.NewUA()
 	if err != nil {
@@ -145,6 +160,19 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 				log.Error("Error reloading blacklists: %v", err)
 			} else {
 				log.Info("SIGUSR1: Blacklists reloaded")
+			}
+		}
+	}()
+	go func() {
+		sighupChan := make(chan os.Signal, 1)
+		signal.Notify(sighupChan, syscall.SIGHUP)
+		for {
+			<-sighupChan
+			log.Info("SIGHUP: Reopening audit files")
+			if err := cfg.reopenAuditFiles(); err != nil {
+				log.Error("Error reopening audit files: %v", err)
+			} else {
+				log.Info("SIGHUP: Audit files reopened")
 			}
 		}
 	}()
@@ -201,10 +229,12 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	var blackListLine *string
 	if blacklistFile, blacklistLineNo, blackListLine = cfg.isSpam(newCallerID); blacklistFile == nil {
 		log.Info("Not on any blacklist, skipping")
+		cfg.auditLogAllowed(newCallerID)
 		return
 	}
 
 	log.Info("Caller on blacklist file=%s line=%d: %s", *blacklistFile, blacklistLineNo, *blackListLine)
+	cfg.auditLogBlocked(newCallerID, *blacklistFile, blacklistLineNo)
 
 	log.Debug("Trying")
 	err := inDialog.Progress()
@@ -351,4 +381,51 @@ func (cfg *SpamFilter) convertToInternational(callerID string) string {
 
 	// all other cases, just add a + and country code
 	return "+" + cfg.CountryCode + callerID
+}
+
+func (cfg *SpamFilter) reopenAuditFiles() error {
+	var err error
+	cfg.auditFileSIGHUPLock.Lock()
+	defer cfg.auditFileSIGHUPLock.Unlock()
+	if cfg.auditBlockedNumbers != nil {
+		cfg.auditBlockedNumbers.Close()
+	}
+	if cfg.auditAllowedNumbers != nil {
+		cfg.auditAllowedNumbers.Close()
+	}
+	if cfg.AuditFiles.BlockedNumbers != "" {
+		cfg.auditBlockedNumbers, err = os.OpenFile(cfg.AuditFiles.BlockedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+	}
+	if cfg.AuditFiles.AllowedNumbers != "" {
+		cfg.auditAllowedNumbers, err = os.OpenFile(cfg.AuditFiles.AllowedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (cfg *SpamFilter) auditLogAllowed(number string) {
+	cfg.auditFileSIGHUPLock.RLock()
+	defer cfg.auditFileSIGHUPLock.RUnlock()
+	if cfg.auditAllowedNumbers != nil {
+		_, err := cfg.auditAllowedNumbers.WriteString(fmt.Sprintf("%s,%s\n", time.Now().Format(time.RFC3339), number))
+		if err != nil {
+			cfg.log.Error("Audit log: Error writing to audit allowed numbers: %v", err)
+		}
+	}
+}
+
+func (cfg *SpamFilter) auditLogBlocked(number string, fileName string, lineNo int) {
+	cfg.auditFileSIGHUPLock.RLock()
+	defer cfg.auditFileSIGHUPLock.RUnlock()
+	if cfg.auditBlockedNumbers != nil {
+		_, err := cfg.auditBlockedNumbers.WriteString(fmt.Sprintf("%s,%s,%s,%d\n", time.Now().Format(time.RFC3339), number, fileName, lineNo))
+		if err != nil {
+			cfg.log.Error("Audit log: Error writing to audit blocked numbers: %v", err)
+		}
+	}
 }

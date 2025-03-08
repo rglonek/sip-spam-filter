@@ -7,6 +7,9 @@ sip:
   host: "SIPHOST"         # SIP server hostname
   port: 5060              # SIP server port
   expiry_seconds: 500     # SIP registration expiry seconds
+audit_files: # if any of these exist, audit log will be written to them
+  blocked_numbers: "./blocked_numbers.log" # format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
+  allowed_numbers: "./allowed_numbers.log" # format: timestamp,number (timestamp in RFC3339 format)
 spam:
   sleep_seconds: 1      # Seconds to wait before hanging up spam calls
   blacklist_paths:      # Paths to blacklist files/directories
