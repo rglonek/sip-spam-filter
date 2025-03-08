@@ -20,7 +20,9 @@ audit_files: # if any of these exist, audit log will be written to them
   blocked_numbers: "./blocked_numbers.log" # format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
   allowed_numbers: "./allowed_numbers.log" # format: timestamp,number (timestamp in RFC3339 format)
 spam:
-  sleep_seconds: 1      # Seconds to wait before hanging up spam calls
+  try_to_answer_delay_ms: 200       # Milliseconds to wait before trying to answer spam calls (SIP 100->trying)
+  answer_delay_ms: 200              # Milliseconds to wait before answering spam calls (SIP 183->answered)
+  hangup_delay_ms: 1000             # Milliseconds to wait before hanging up spam calls (SIP 180->hangup)
   blacklist_paths:      # Paths to blacklist files/directories
     - "./blacklist.txt"
     - "./blacklists/"
@@ -65,7 +67,9 @@ The spam section is used to configure the spam filter.
 
 Parameter | Description
 --- | ---
-sleep_seconds | Seconds to wait before hanging up spam calls after accepting the call
+try_to_answer_delay_ms | Millseconds to wait before sending a "trying to answer" message
+answer_delay_ms | Millseconds to wait after sending "trying to answer", before answering the call
+hangup_delay_ms | Milliseconds to wait before hanging up spam calls after accepting the call
 blacklist_paths | Paths to blacklist files/directories
 
 ## Blacklist
