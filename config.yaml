@@ -13,5 +13,4 @@ audit_files: # if any of these exist, audit log will be written to them
 spam:
   sleep_seconds: 1      # Seconds to wait before hanging up spam calls
   blacklist_paths:      # Paths to blacklist files/directories
-    - "./blacklist.txt"
     - "./blacklists/"
