@@ -44,7 +44,7 @@ type SpamFilterSip struct {
 	Password      string `json:"password" yaml:"password"`
 	Host          string `json:"host" yaml:"host"`
 	Port          int    `json:"port" yaml:"port"`
-	ExpirySeconds int    `json:"answer_delay_ms" yaml:"answer_delay_ms" default:"500"`
+	ExpirySeconds int    `json:"expiry_seconds" yaml:"expiry_seconds" default:"500"`
 }
 
 type SpamFilterSpam struct {
