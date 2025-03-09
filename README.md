@@ -129,3 +129,51 @@ kill -USR1 $(pidof spam-filter)
 ```bash
 kill -SIGHUP $(pidof spam-filter)
 ```
+
+# Benchmark
+
+## Test machine
+
+```
+goos: darwin
+goarch: amd64
+pkg: sip-spam-filter
+cpu: Intel(R) Core(TM) i9-9880H CPU @ 2.30GHz
+```
+
+## Summary
+
+Tested worst-case speed, including long comments and average-sized filenames. Results summary: all tests completed way below 1 millsecond, up to `100'000'000` entries tested. In essence, while we benchmarked many possible results, the fact we are way below 1 millisecond for searches means we are extremely fast for any purpose.
+
+Lookups do not allocate any extra memory during a lookup.
+
+## Analysis
+
+In general, it is better to have more entries per file, less files. For example, looking up total 1 million results over 100 files is 12x faster than looking up 1 million total split over over 1000 files.
+
+Similarly, looking up 10 million results split over 10 files takes 10x less time than looking up 1 million results split over 100 files.
+
+This is because the search uses one map per file to keep track of which blacklist the number appeared in. This result may also be slightly inaccurate as the results do not take into consideration possible matches, or variations in indexed searches. This test assumes the search has to navigate every part of every branch of every map tree.
+
+## Data
+
+Files | Entries per file | Total Entries | Result - microseconds/lookup
+--- | --- | --- | ---
+100 | 1000 | 100'000 | 1.343
+100 | 5000 | 500'000 | 1.660
+100 | 10000 | 1'000'000 | 1.563
+1000 | 100 | 100'000 | 23.323
+1000 | 500 | 500'000 | 15.650
+1000 | 1000 | 1'000'000 | 19.448
+1000 | 5000 | 5'000'000 | 25.199
+1000 | 10000 | 10'000'000 | 26.822
+10000 | 10000 | 100'000'000 | 368.848
+10 | 1000000 | 10'000'000 | 0.127
+100 | 1000000 | 100'000'000 | 1.585
+10 | 10000000 | 100'000'000 | 0.139
+
+## Notes on memory
+
+Reloading of the blacklists actually takes place separately from when the list is running. The reload means that a new blacklist is created in memory, and then the delay only happens as the old blacklist pointer is replaced with the new one. Speed-wise it means we do not care how long it takes to load the blacklist on refresh, as the actual functionality blip takes a few nanoseconds. Memory utilization on the other hand doubles during the refresh.
+
+To mitigate issues with multiple refreshes, the refreshes may be queued (this queue is currently unlimited, so check logs before doing another refresh with SIGUSR1), but they will be executed one at a time.

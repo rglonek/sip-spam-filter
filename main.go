@@ -37,6 +37,48 @@ type SpamFilter struct {
 	auditBlockedNumbers *os.File
 	auditAllowedNumbers *os.File
 	auditFileSIGHUPLock sync.RWMutex
+	stats               *stats
+}
+
+type stats struct {
+	lock            sync.RWMutex
+	blockedCount    int
+	allowedCount    int
+	lookupTotalTime time.Duration
+	oldCounts       int
+}
+
+func (s *stats) addBlocked(lookupTime time.Duration) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.blockedCount++
+	s.lookupTotalTime += lookupTime
+}
+
+func (s *stats) addAllowed(lookupTime time.Duration) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.allowedCount++
+	s.lookupTotalTime += lookupTime
+}
+
+func (s *stats) print(log *logger.Logger) {
+	s.lock.Lock()
+	allowedCount := s.allowedCount
+	blockedCount := s.blockedCount
+	lookupTotalTime := s.lookupTotalTime
+	total := blockedCount + allowedCount
+	if s.oldCounts == total {
+		s.lock.Unlock()
+		return
+	}
+	s.oldCounts = total
+	s.lock.Unlock()
+	avgLookupTime := time.Duration(0)
+	if total > 0 {
+		avgLookupTime = lookupTotalTime / time.Duration(total)
+	}
+	log.Info("Stats: blocked=%d allowed=%d averageLookupTime=%s", blockedCount, allowedCount, avgLookupTime)
 }
 
 type SpamFilterSip struct {
@@ -122,6 +164,7 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 		log.MillisecondLogging(true)
 	}
 	cfg.log = log
+	cfg.stats = &stats{}
 	log.Info("Parsing blacklists")
 	err := cfg.parseBlacklist()
 	if err != nil {
@@ -192,6 +235,13 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 		err := dg.Serve(ctx, cfg.callHandler)
 		if err != nil {
 			log.Critical("Serve failed: %v", err)
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(time.Second * 10)
+			cfg.stats.print(log)
 		}
 	}()
 
@@ -371,6 +421,7 @@ func (cfg *SpamFilter) parseFile(filePath string) (*blacklist, error) {
 }
 
 func (cfg *SpamFilter) isSpam(callerID string) (matchedFileName *string, matchedLineNo int, comment *string) {
+	start := time.Now()
 	cfg.blacklistLock.RLock()
 	defer cfg.blacklistLock.RUnlock()
 	for _, blacklist := range cfg.blacklistNumbers {
@@ -378,9 +429,11 @@ func (cfg *SpamFilter) isSpam(callerID string) (matchedFileName *string, matched
 			fn := blacklist.fileName
 			ln := val.lineNumber
 			cm := val.comment
+			cfg.stats.addBlocked(time.Since(start))
 			return &fn, ln, &cm
 		}
 	}
+	cfg.stats.addAllowed(time.Since(start))
 	return nil, 0, nil
 }
 
