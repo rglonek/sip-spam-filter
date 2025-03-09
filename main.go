@@ -30,9 +30,9 @@ type SpamFilter struct {
 	SIP                 SpamFilterSip        `json:"sip" yaml:"sip"`
 	AuditFiles          SpamFilterAuditFiles `json:"audit_files" yaml:"audit_files"`
 	Spam                SpamFilterSpam       `json:"spam" yaml:"spam"`
-	blacklistNumbers    map[string]blacklist // number -> blacklist
-	blacklistLock       sync.RWMutex         // if we are reloading, we lock, if we are reading, we rlock
-	parserLock          sync.Mutex           // only one parser at a time, all others will be blocked and queued
+	blacklistNumbers    []*blacklist
+	blacklistLock       sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
+	parserLock          sync.Mutex   // only one parser at a time, all others will be blocked and queued
 	log                 *logger.Logger
 	auditBlockedNumbers *os.File
 	auditAllowedNumbers *os.File
@@ -60,9 +60,13 @@ type SpamFilterAuditFiles struct {
 }
 
 type blacklist struct {
-	fileName   string
-	fileLineNo int
-	line       string
+	fileName string
+	numbers  map[string]blacklistNumber
+}
+
+type blacklistNumber struct {
+	lineNumber int
+	comment    string
 }
 
 func main() {
@@ -228,14 +232,14 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 
 	var blacklistFile *string
 	var blacklistLineNo int
-	var blackListLine *string
-	if blacklistFile, blacklistLineNo, blackListLine = cfg.isSpam(newCallerID); blacklistFile == nil {
+	var blacklistComment *string
+	if blacklistFile, blacklistLineNo, blacklistComment = cfg.isSpam(newCallerID); blacklistFile == nil {
 		log.Info("Not on any blacklist, skipping")
 		cfg.auditLogAllowed(newCallerID)
 		return
 	}
 
-	log.Info("Caller on blacklist file=%s line=%d: %s", *blacklistFile, blacklistLineNo, *blackListLine)
+	log.Info("Caller on blacklist file=%s line=%d comment=%s", *blacklistFile, blacklistLineNo, *blacklistComment)
 	cfg.auditLogBlocked(newCallerID, *blacklistFile, blacklistLineNo)
 
 	log.Debug("Try-Sleeping")
@@ -269,7 +273,7 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 func (cfg *SpamFilter) parseBlacklist() error {
 	cfg.parserLock.Lock()
 	defer cfg.parserLock.Unlock()
-	newList := make(map[string]blacklist)
+	var newList []*blacklist
 	for _, path := range cfg.Spam.BlacklistPaths {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
@@ -283,9 +287,11 @@ func (cfg *SpamFilter) parseBlacklist() error {
 					return err
 				}
 				if !info.IsDir() {
-					if err := cfg.parseFile(filePath, newList); err != nil {
+					bl, err := cfg.parseFile(filePath)
+					if err != nil {
 						return fmt.Errorf("error parsing file %s: %v", filePath, err)
 					}
+					newList = append(newList, bl)
 				}
 				return nil
 			})
@@ -294,9 +300,11 @@ func (cfg *SpamFilter) parseBlacklist() error {
 			}
 		} else {
 			// Handle single file
-			if err := cfg.parseFile(path, newList); err != nil {
+			bl, err := cfg.parseFile(path)
+			if err != nil {
 				return fmt.Errorf("error parsing file %s: %v", path, err)
 			}
+			newList = append(newList, bl)
 		}
 	}
 
@@ -307,11 +315,15 @@ func (cfg *SpamFilter) parseBlacklist() error {
 }
 
 // Helper function to parse individual files
-func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) error {
+func (cfg *SpamFilter) parseFile(filePath string) (*blacklist, error) {
 	log := cfg.log.WithPrefix(fmt.Sprintf("parseFile: %s: ", filePath))
+	newList := &blacklist{
+		fileName: filePath,
+		numbers:  make(map[string]blacklistNumber),
+	}
 	file, err := os.Open(filePath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer file.Close()
 
@@ -320,7 +332,6 @@ func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) 
 	for scanner.Scan() {
 		lineNo++
 		line := strings.TrimSpace(scanner.Text())
-		origLine := line
 
 		// Skip empty lines and comments
 		if line == "" || strings.HasPrefix(line, "#") {
@@ -328,11 +339,14 @@ func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) 
 		}
 
 		// Strip comments from the line
-		if idx := strings.Index(line, "#"); idx != -1 {
-			line = strings.TrimSpace(line[:idx])
-			if line == "" {
-				continue
-			}
+		lineSplit := strings.Split(line, "#")
+		line = strings.TrimRight(strings.TrimSpace(lineSplit[0]), "\n\r")
+		if line == "" {
+			continue
+		}
+		comment := ""
+		if len(lineSplit) > 1 {
+			comment = strings.TrimRight(strings.TrimSpace(lineSplit[1]), "\n\r")
 		}
 
 		// Check if number starts with +
@@ -340,30 +354,34 @@ func (cfg *SpamFilter) parseFile(filePath string, newList map[string]blacklist) 
 			log.Warn("Number in file %s line %d does not start with +: %s", filePath, lineNo, line)
 		}
 
-		newList[line] = blacklist{
-			fileName:   filePath,
-			fileLineNo: lineNo,
-			line:       origLine,
+		if val, ok := newList.numbers[line]; ok {
+			log.Warn("Ignoring duplicate number on line number %d (first seen on line %d) in file %s", lineNo, val.lineNumber, filePath)
+		} else {
+			newList.numbers[line] = blacklistNumber{
+				lineNumber: lineNo,
+				comment:    comment,
+			}
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return newList, nil
 }
 
-func (cfg *SpamFilter) isSpam(callerID string) (matchedFileName *string, matchedLineNo int, matchedLine *string) {
+func (cfg *SpamFilter) isSpam(callerID string) (matchedFileName *string, matchedLineNo int, comment *string) {
 	cfg.blacklistLock.RLock()
 	defer cfg.blacklistLock.RUnlock()
-	blacklist, ok := cfg.blacklistNumbers[callerID]
-	if !ok {
-		return nil, 0, nil
+	for _, blacklist := range cfg.blacklistNumbers {
+		if val, ok := blacklist.numbers[callerID]; ok {
+			fn := blacklist.fileName
+			ln := val.lineNumber
+			cm := val.comment
+			return &fn, ln, &cm
+		}
 	}
-	fn := blacklist.fileName
-	ln := blacklist.fileLineNo
-	ml := blacklist.line
-	return &fn, ln, &ml
+	return nil, 0, nil
 }
 
 func (cfg *SpamFilter) convertToInternational(callerID string) string {
