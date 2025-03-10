@@ -45,11 +45,12 @@ type SpamFilterConfig struct {
 }
 
 type SpamFilterSip struct {
-	User     string       `json:"user" yaml:"user"`
-	Password string       `json:"password" yaml:"password"`
-	Host     string       `json:"host" yaml:"host"`
-	Port     int          `json:"port" yaml:"port" default:"5060"`
-	Expiry   timeDuration `json:"expiry" yaml:"expiry" default:"500s"`
+	User      string       `json:"user" yaml:"user"`
+	Password  string       `json:"password" yaml:"password"`
+	Host      string       `json:"host" yaml:"host"`
+	Port      int          `json:"port" yaml:"port" default:"5060"`
+	Expiry    timeDuration `json:"expiry" yaml:"expiry" default:"500s"`
+	UserAgent string       `json:"user_agent" yaml:"user_agent"`
 }
 
 type SpamFilterSpam struct {

@@ -78,14 +78,14 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 
 	// create a new sip userAgent
 	log.Info("Creating new userAgent")
-	ua, err := sipgo.NewUA()
+	ua, err := sipgo.NewUA(sipgo.WithUserAgent(cfg.config.SIP.UserAgent))
 	if err != nil {
 		return err
 	}
 
 	// create a new sip client
 	log.Info("Creating new client")
-	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.config.LocalAddr))
+	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.config.SIP.UserAgent))
 	if err != nil {
 		return err
 	}

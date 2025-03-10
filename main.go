@@ -11,14 +11,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+var version = "0.1"
+
 func main() {
-	log.Println("=-=-=-=-= SIP-SPAM-FILTER v0.1-beta1 =-=-=-=-=")
+	log.Println("=-=-=-=-= SIP-SPAM-FILTER v" + version + " =-=-=-=-=")
 	configPath := flag.String("config", "", "path to config file")
 	flag.Parse()
 	if *configPath == "" {
 		log.Fatal("--config parameter is required")
 	}
-	config := &sipspamfilter.SpamFilterConfig{}
+	config := &sipspamfilter.SpamFilterConfig{
+		SIP: sipspamfilter.SpamFilterSip{
+			UserAgent: "spam-filter/" + version,
+		},
+	}
 	if err := defaults.Set(config); err != nil {
 		log.Fatalf("Failed to set defaults: %v", err)
 	}
