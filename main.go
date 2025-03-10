@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"log"
 	"os"
@@ -32,7 +33,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)
 	}
-	err = yaml.Unmarshal(configData, config)
+	decoder := yaml.NewDecoder(bytes.NewReader(configData))
+	decoder.KnownFields(true)
+	err = decoder.Decode(config)
 	if err != nil {
 		log.Fatalf("Failed to parse config file: %v", err)
 	}
