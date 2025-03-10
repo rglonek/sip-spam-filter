@@ -1,3 +1,6 @@
+# github.com/creasty/defaults v1.8.0
+## explicit; go 1.14
+github.com/creasty/defaults
 # github.com/emiago/diago v0.13.0
 ## explicit; go 1.22.4
 github.com/emiago/diago
@@ -52,6 +55,9 @@ github.com/pion/rtp
 github.com/pion/rtp/codecs
 github.com/pion/rtp/codecs/av1/obu
 github.com/pion/rtp/codecs/vp9
+# github.com/rglonek/logger v0.2.2
+## explicit; go 1.18
+github.com/rglonek/logger
 # github.com/rs/zerolog v1.33.0
 ## explicit; go 1.15
 github.com/rs/zerolog

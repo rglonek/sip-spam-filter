@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/creasty/defaults"
 	"github.com/emiago/diago"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
@@ -24,12 +25,7 @@ import (
 )
 
 type SpamFilter struct {
-	LogLevel            int                  `json:"log_level" yaml:"log_level" default:"4"`
-	LocalAddr           string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
-	CountryCode         string               `json:"country_code" yaml:"country_code" default:"44"`
-	SIP                 SpamFilterSip        `json:"sip" yaml:"sip"`
-	AuditFiles          SpamFilterAuditFiles `json:"audit_files" yaml:"audit_files"`
-	Spam                SpamFilterSpam       `json:"spam" yaml:"spam"`
+	config              *SpamFilterConfig
 	blacklistNumbers    []*blacklist
 	blacklistLock       sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
 	parserLock          sync.Mutex   // only one parser at a time, all others will be blocked and queued
@@ -81,19 +77,28 @@ func (s *stats) print(log *logger.Logger) {
 	log.Info("Stats: blocked=%d allowed=%d averageLookupTime=%s", blockedCount, allowedCount, avgLookupTime)
 }
 
+type SpamFilterConfig struct {
+	LogLevel    int                  `json:"log_level" yaml:"log_level" default:"4"`
+	LocalAddr   string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
+	CountryCode string               `json:"country_code" yaml:"country_code" default:"44"`
+	SIP         SpamFilterSip        `json:"sip" yaml:"sip"`
+	AuditFiles  SpamFilterAuditFiles `json:"audit_files" yaml:"audit_files"`
+	Spam        SpamFilterSpam       `json:"spam" yaml:"spam"`
+}
+
 type SpamFilterSip struct {
-	User          string `json:"user" yaml:"user"`
-	Password      string `json:"password" yaml:"password"`
-	Host          string `json:"host" yaml:"host"`
-	Port          int    `json:"port" yaml:"port"`
-	ExpirySeconds int    `json:"expiry_seconds" yaml:"expiry_seconds" default:"500"`
+	User     string        `json:"user" yaml:"user"`
+	Password string        `json:"password" yaml:"password"`
+	Host     string        `json:"host" yaml:"host"`
+	Port     int           `json:"port" yaml:"port" default:"5060"`
+	Expiry   time.Duration `json:"expiry" yaml:"expiry" default:"500s"`
 }
 
 type SpamFilterSpam struct {
-	TryToAnswerDelayMs int      `json:"try_to_answer_delay_ms" yaml:"try_to_answer_delay_ms"`
-	AnswerDelayMs      int      `json:"answer_delay_ms" yaml:"answer_delay_ms"`
-	HangupDelayMs      int      `json:"hangup_delay_ms" yaml:"hangup_delay_ms"`
-	BlacklistPaths     []string `json:"blacklist_paths" yaml:"blacklist_paths"`
+	TryToAnswerDelay time.Duration `json:"try_to_answer_delay" yaml:"try_to_answer_delay" default:"100ms"`
+	AnswerDelay      time.Duration `json:"answer_delay" yaml:"answer_delay" default:"100ms"`
+	HangupDelay      time.Duration `json:"hangup_delay" yaml:"hangup_delay" default:"1s"`
+	BlacklistPaths   []string      `json:"blacklist_paths" yaml:"blacklist_paths"`
 }
 
 type SpamFilterAuditFiles struct {
@@ -112,12 +117,18 @@ type blacklistNumber struct {
 }
 
 func main() {
+	log.Println("Starting SIP-SPAM-FILTER v0.1")
 	configPath := flag.String("config", "", "path to config file")
 	flag.Parse()
 	if *configPath == "" {
 		log.Fatal("--config parameter is required")
 	}
-	cfg := &SpamFilter{}
+	cfg := &SpamFilter{
+		config: &SpamFilterConfig{},
+	}
+	if err := defaults.Set(cfg.config); err != nil {
+		log.Fatalf("Failed to set defaults: %v", err)
+	}
 	configData, err := os.ReadFile(*configPath)
 	if err != nil {
 		log.Fatalf("Failed to read config file: %v", err)
@@ -126,6 +137,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to parse config file: %v", err)
 	}
+
 	configYaml, err := yaml.Marshal(cfg)
 	if err != nil {
 		log.Fatalf("Failed to marshal config: %v", err)
@@ -133,7 +145,7 @@ func main() {
 	log.Printf("Loaded config:\n%s", string(configYaml))
 
 	log := logger.NewLogger()
-	log.SetLogLevel(logger.LogLevel(cfg.LogLevel))
+	log.SetLogLevel(logger.LogLevel(cfg.config.LogLevel))
 	log.MillisecondLogging(true)
 
 	// create a logger pipe and patch zerolog and os.Std* to use it
@@ -160,7 +172,7 @@ func main() {
 func (cfg *SpamFilter) Main(log *logger.Logger) error {
 	if log == nil {
 		log = logger.NewLogger()
-		log.SetLogLevel(logger.LogLevel(cfg.LogLevel))
+		log.SetLogLevel(logger.LogLevel(cfg.config.LogLevel))
 		log.MillisecondLogging(true)
 	}
 	cfg.log = log
@@ -184,7 +196,7 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 	}
 
 	log.Info("Creating new client")
-	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.LocalAddr))
+	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.config.LocalAddr))
 	if err != nil {
 		return err
 	}
@@ -248,14 +260,14 @@ func (cfg *SpamFilter) Main(log *logger.Logger) error {
 	log.Info("Registering with SIP server")
 	err = dg.Register(context.TODO(), sip.Uri{
 		Scheme:   "sip",
-		User:     cfg.SIP.User,
-		Password: cfg.SIP.Password,
-		Host:     cfg.SIP.Host,
-		Port:     cfg.SIP.Port,
+		User:     cfg.config.SIP.User,
+		Password: cfg.config.SIP.Password,
+		Host:     cfg.config.SIP.Host,
+		Port:     cfg.config.SIP.Port,
 	}, diago.RegisterOptions{
-		Username: cfg.SIP.User,
-		Password: cfg.SIP.Password,
-		Expiry:   time.Duration(cfg.SIP.ExpirySeconds) * time.Second,
+		Username: cfg.config.SIP.User,
+		Password: cfg.config.SIP.Password,
+		Expiry:   cfg.config.SIP.Expiry,
 	})
 	if err != nil {
 		return err
@@ -293,7 +305,7 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	cfg.auditLogBlocked(newCallerID, *blacklistFile, blacklistLineNo)
 
 	log.Debug("Try-Sleeping")
-	time.Sleep(time.Millisecond * time.Duration(cfg.Spam.TryToAnswerDelayMs))
+	time.Sleep(cfg.config.Spam.TryToAnswerDelay)
 	log.Debug("Trying")
 	err := inDialog.Progress()
 	if err != nil {
@@ -302,7 +314,7 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	}
 
 	log.Debug("Answer-Sleeping")
-	time.Sleep(time.Millisecond * time.Duration(cfg.Spam.AnswerDelayMs))
+	time.Sleep(cfg.config.Spam.AnswerDelay)
 
 	log.Debug("Answering")
 	err = inDialog.Answer()
@@ -312,7 +324,7 @@ func (cfg *SpamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	}
 
 	log.Debug("Hangup-Sleeping")
-	time.Sleep(time.Millisecond * time.Duration(cfg.Spam.HangupDelayMs))
+	time.Sleep(cfg.config.Spam.HangupDelay)
 
 	log.Debug("Dropping call")
 	inDialog.Close()
@@ -324,7 +336,7 @@ func (cfg *SpamFilter) parseBlacklist() error {
 	cfg.parserLock.Lock()
 	defer cfg.parserLock.Unlock()
 	var newList []*blacklist
-	for _, path := range cfg.Spam.BlacklistPaths {
+	for _, path := range cfg.config.Spam.BlacklistPaths {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
 			return fmt.Errorf("could not access path %s: %v", path, err)
@@ -449,17 +461,17 @@ func (cfg *SpamFilter) convertToInternational(callerID string) string {
 	}
 
 	// if it starts from country code from config, add a plus
-	if strings.HasPrefix(callerID, cfg.CountryCode) {
+	if strings.HasPrefix(callerID, cfg.config.CountryCode) {
 		return "+" + callerID
 	}
 
 	// if it starts with a single zero, replace it with a +countryCode
 	if strings.HasPrefix(callerID, "0") {
-		return "+" + cfg.CountryCode + callerID[1:]
+		return "+" + cfg.config.CountryCode + callerID[1:]
 	}
 
 	// all other cases, just add a + and country code
-	return "+" + cfg.CountryCode + callerID
+	return "+" + cfg.config.CountryCode + callerID
 }
 
 func (cfg *SpamFilter) reopenAuditFiles() error {
@@ -472,14 +484,14 @@ func (cfg *SpamFilter) reopenAuditFiles() error {
 	if cfg.auditAllowedNumbers != nil {
 		cfg.auditAllowedNumbers.Close()
 	}
-	if cfg.AuditFiles.BlockedNumbers != "" {
-		cfg.auditBlockedNumbers, err = os.OpenFile(cfg.AuditFiles.BlockedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if cfg.config.AuditFiles.BlockedNumbers != "" {
+		cfg.auditBlockedNumbers, err = os.OpenFile(cfg.config.AuditFiles.BlockedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			return err
 		}
 	}
-	if cfg.AuditFiles.AllowedNumbers != "" {
-		cfg.auditAllowedNumbers, err = os.OpenFile(cfg.AuditFiles.AllowedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if cfg.config.AuditFiles.AllowedNumbers != "" {
+		cfg.auditAllowedNumbers, err = os.OpenFile(cfg.config.AuditFiles.AllowedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 		if err != nil {
 			return err
 		}
