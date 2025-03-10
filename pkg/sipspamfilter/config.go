@@ -46,7 +46,7 @@ type SpamFilterConfig struct {
 
 type SpamFilterSip struct {
 	User      string       `json:"user" yaml:"user"`
-	Password  string       `json:"password" yaml:"password"`
+	Password  password     `json:"password" yaml:"password"`
 	Host      string       `json:"host" yaml:"host"`
 	Port      int          `json:"port" yaml:"port" default:"5060"`
 	Expiry    timeDuration `json:"expiry" yaml:"expiry" default:"500s"`
@@ -63,4 +63,14 @@ type SpamFilterSpam struct {
 type SpamFilterAuditFiles struct {
 	BlockedNumbers string `json:"blocked_numbers" yaml:"blocked_numbers"`
 	AllowedNumbers string `json:"allowed_numbers" yaml:"allowed_numbers"`
+}
+
+type password string
+
+func (p *password) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	return unmarshal((*string)(p))
+}
+
+func (p password) MarshalYAML() (interface{}, error) {
+	return "********", nil
 }

@@ -85,7 +85,7 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 
 	// create a new sip client
 	log.Info("Creating new client")
-	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.config.SIP.UserAgent))
+	client, err := sipgo.NewClient(ua, sipgo.WithClientAddr(cfg.config.LocalAddr))
 	if err != nil {
 		return err
 	}
@@ -113,12 +113,12 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 		err = dg.Register(context.TODO(), sip.Uri{
 			Scheme:   "sip",
 			User:     cfg.config.SIP.User,
-			Password: cfg.config.SIP.Password,
+			Password: string(cfg.config.SIP.Password),
 			Host:     cfg.config.SIP.Host,
 			Port:     cfg.config.SIP.Port,
 		}, diago.RegisterOptions{
 			Username: cfg.config.SIP.User,
-			Password: cfg.config.SIP.Password,
+			Password: string(cfg.config.SIP.Password),
 			Expiry:   cfg.config.SIP.Expiry.ToDuration(),
 		})
 		if err != nil {
