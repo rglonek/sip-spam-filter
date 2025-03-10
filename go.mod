@@ -3,10 +3,13 @@ module sip-spam-filter
 go 1.24.0
 
 require (
+	github.com/creasty/defaults v1.8.0
 	github.com/emiago/diago v0.13.0
 	github.com/emiago/sipgo v0.29.0
 	github.com/lithammer/shortuuid v3.0.0+incompatible
-	gopkg.in/yaml.v2 v2.4.0
+	github.com/rglonek/logger v0.2.2
+	github.com/rs/zerolog v1.33.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -21,7 +24,6 @@ require (
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/rtcp v1.2.14 // indirect
 	github.com/pion/rtp v1.8.9 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/satori/go.uuid v1.2.1-0.20181028125025-b2ce2384e17b // indirect
 	github.com/zaf/g711 v1.4.0 // indirect
 	golang.org/x/sys v0.24.0 // indirect
