@@ -40,7 +40,9 @@ Level | Name | Description
 3 | Warning | Warnings
 4 | Info | General information
 5 | Debug | Debug messages from them spam filter processing
-6 | Detail | All non-critical messages from the SIP library itself
+6 | Detail | Trace messages for troubleshooting
+
+The log level will also be applied to the SIP library.
 
 ## Local address and country code
 

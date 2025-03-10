@@ -1,4 +1,4 @@
-package main
+package sipspamfilter
 
 import (
 	"fmt"
@@ -24,7 +24,7 @@ func BenchmarkBlacklistLookup(b *testing.B) {
 			numbers:  numbers,
 		})
 	}
-	cfg := &SpamFilter{
+	cfg := &spamFilter{
 		blacklistNumbers: bln,
 		stats:            &stats{},
 	}

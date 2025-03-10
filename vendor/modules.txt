@@ -76,6 +76,6 @@ golang.org/x/sys/unix
 # gopkg.in/hraban/opus.v2 v2.0.0-20230925203106-0188a62cb302
 ## explicit
 gopkg.in/hraban/opus.v2
-# gopkg.in/yaml.v2 v2.4.0
-## explicit; go 1.15
-gopkg.in/yaml.v2
+# gopkg.in/yaml.v3 v3.0.1
+## explicit
+gopkg.in/yaml.v3
