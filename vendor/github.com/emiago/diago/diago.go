@@ -774,8 +774,8 @@ func (dg *Diago) findTransport(id string, transport string) (Transport, bool) {
 
 type RegisterOptions struct {
 	// Digest auth
-	Username string
-	Password string
+	Username  string
+	Password  string
 	ProxyHost string
 
 	// Expiry is for Expire header
@@ -783,6 +783,7 @@ type RegisterOptions struct {
 	// Retry interval is interval before next Register is sent
 	RetryInterval time.Duration
 	AllowHeaders  []string
+	UserAgent     string
 
 	// Useragent default will be used on what is provided as NewUA()
 	// UserAgent         string

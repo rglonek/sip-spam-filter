@@ -78,7 +78,7 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 
 	// create a new sip userAgent
 	log.Info("Creating new userAgent")
-	ua, err := sipgo.NewUA(sipgo.WithUserAgent(cfg.config.SIP.UserAgent))
+	ua, err := sipgo.NewUA(sipgo.WithUserAgent("spamfilter"))
 	if err != nil {
 		return err
 	}
@@ -117,9 +117,10 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 			Host:     cfg.config.SIP.Host,
 			Port:     cfg.config.SIP.Port,
 		}, diago.RegisterOptions{
-			Username: cfg.config.SIP.User,
-			Password: string(cfg.config.SIP.Password),
-			Expiry:   cfg.config.SIP.Expiry.ToDuration(),
+			Username:  cfg.config.SIP.User,
+			Password:  string(cfg.config.SIP.Password),
+			Expiry:    cfg.config.SIP.Expiry.ToDuration(),
+			UserAgent: cfg.config.SIP.UserAgent,
 		})
 		if err != nil {
 			exiter <- err

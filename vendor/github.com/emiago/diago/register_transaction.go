@@ -54,6 +54,9 @@ func newRegisterTransaction(client *sipgo.Client, recipient sip.Uri, contact sip
 		expires := sip.ExpiresHeader(expiry.Seconds())
 		req.AppendHeader(&expires)
 	}
+	if opts.UserAgent != "" {
+		req.AppendHeader(sip.NewHeader("User-Agent", opts.UserAgent))
+	}
 	if allowHDRS != nil {
 		req.AppendHeader(sip.NewHeader("Allow", strings.Join(allowHDRS, ", ")))
 	}
