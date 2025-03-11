@@ -7,7 +7,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/emiago/diago/media"
+	"github.com/rglonek/diago/media"
 )
 
 var rtpBufPool = sync.Pool{

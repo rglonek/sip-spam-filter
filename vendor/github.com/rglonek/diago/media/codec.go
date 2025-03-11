@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/emiago/diago/media/sdp"
+	"github.com/rglonek/diago/media/sdp"
 	"github.com/rs/zerolog/log"
 )
 

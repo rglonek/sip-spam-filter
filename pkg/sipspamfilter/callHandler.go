@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/emiago/diago"
 	"github.com/lithammer/shortuuid"
+	"github.com/rglonek/diago"
 )
 
 func (cfg *spamFilter) callHandler(inDialog *diago.DialogServerSession) {

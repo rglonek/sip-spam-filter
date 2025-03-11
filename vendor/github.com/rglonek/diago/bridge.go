@@ -9,7 +9,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/emiago/diago/media"
+	"github.com/rglonek/diago/media"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )

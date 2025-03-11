@@ -12,7 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "0.1"
+var version = "0.2"
 
 func main() {
 	log.Println("=-=-=-=-= SIP-SPAM-FILTER v" + version + " =-=-=-=-=")

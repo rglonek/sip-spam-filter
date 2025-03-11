@@ -1,12 +1,6 @@
 # github.com/creasty/defaults v1.8.0
 ## explicit; go 1.14
 github.com/creasty/defaults
-# github.com/emiago/diago v0.13.0
-## explicit; go 1.22.4
-github.com/emiago/diago
-github.com/emiago/diago/audio
-github.com/emiago/diago/media
-github.com/emiago/diago/media/sdp
 # github.com/emiago/sipgo v0.29.0
 ## explicit; go 1.20
 github.com/emiago/sipgo
@@ -55,6 +49,12 @@ github.com/pion/rtp
 github.com/pion/rtp/codecs
 github.com/pion/rtp/codecs/av1/obu
 github.com/pion/rtp/codecs/vp9
+# github.com/rglonek/diago v0.13.101
+## explicit; go 1.22.4
+github.com/rglonek/diago
+github.com/rglonek/diago/audio
+github.com/rglonek/diago/media
+github.com/rglonek/diago/media/sdp
 # github.com/rglonek/logger v0.2.2
 ## explicit; go 1.18
 github.com/rglonek/logger

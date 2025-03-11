@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/emiago/diago/media"
-	"github.com/emiago/diago/media/sdp"
+	"github.com/rglonek/diago/media"
+	"github.com/rglonek/diago/media/sdp"
 	"github.com/emiago/sipgo/sip"
 	"github.com/rs/zerolog/log"
 )

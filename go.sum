@@ -4,8 +4,6 @@ github.com/creasty/defaults v1.8.0/go.mod h1:iGzKe6pbEHnpMPtfDXZEr0NVxWnPTjb1bbD
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/emiago/diago v0.13.0 h1:0lx+BTq6kDa4krldmD/Xj2DuqfPk3iL27ZDSupeFbrE=
-github.com/emiago/diago v0.13.0/go.mod h1:C0EghWXhZl3ZFTZBEkdIWu2sgHVNvaonIN/+QREfq6I=
 github.com/emiago/sipgo v0.29.0 h1:dg/FwwhSl6hQTiOTIHzcqemZm3tB7jvGQgIlJmuD2Nw=
 github.com/emiago/sipgo v0.29.0/go.mod h1:ZQ/tl5t+3assyOjiKw/AInPkcawBJ2Or+d5buztOZsc=
 github.com/go-audio/riff v1.0.0 h1:d8iCGbDvox9BfLagY94fBynxSPHO80LmZCaOsmKxokA=
@@ -46,6 +44,8 @@ github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINE
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/rglonek/diago v0.13.101 h1:1jXV436jREv/E7po2REexBxqHWErE9mJgD1oQF3Ua+I=
+github.com/rglonek/diago v0.13.101/go.mod h1:WvtZ604M+bWCXebN4rfpey9/LDsaWf7A1pmQ/VrOK/M=
 github.com/rglonek/logger v0.2.2 h1:x26NXqc09il3n8QBY9BkrEqVdiIBBeVxuHPiSLGyPVQ=
 github.com/rglonek/logger v0.2.2/go.mod h1:aoW8J2qZULvefdDJdM+k1q/anE4VOXoe7QA8bHwBPWk=
 github.com/rogpeppe/go-internal v1.12.0 h1:exVL4IDcn6na9z1rAb56Vxr+CgyK3nn3O+epU5NdKM8=

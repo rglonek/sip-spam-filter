@@ -12,9 +12,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/emiago/diago"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
+	"github.com/rglonek/diago"
 	"github.com/rglonek/logger"
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
@@ -117,10 +117,12 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 			Host:     cfg.config.SIP.Host,
 			Port:     cfg.config.SIP.Port,
 		}, diago.RegisterOptions{
-			Username:  cfg.config.SIP.User,
-			Password:  string(cfg.config.SIP.Password),
-			Expiry:    cfg.config.SIP.Expiry.ToDuration(),
-			UserAgent: cfg.config.SIP.UserAgent,
+			Username: cfg.config.SIP.User,
+			Password: string(cfg.config.SIP.Password),
+			Expiry:   cfg.config.SIP.Expiry.ToDuration(),
+			ExtraHeaders: []sip.Header{
+				sip.NewHeader("User-Agent", cfg.config.SIP.UserAgent),
+			},
 		})
 		if err != nil {
 			exiter <- err

@@ -12,10 +12,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/emiago/diago/media"
-	"github.com/emiago/diago/media/sdp"
 	"github.com/emiago/sipgo"
 	"github.com/emiago/sipgo/sip"
+	"github.com/rglonek/diago/media"
+	"github.com/rglonek/diago/media/sdp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -783,7 +783,10 @@ type RegisterOptions struct {
 	// Retry interval is interval before next Register is sent
 	RetryInterval time.Duration
 	AllowHeaders  []string
-	UserAgent     string
+
+	// ExtraHeaders will be added to REGISTER request
+	// for example: User-Agent: myuseragent/1.0
+	ExtraHeaders []sip.Header
 
 	// Useragent default will be used on what is provided as NewUA()
 	// UserAgent         string

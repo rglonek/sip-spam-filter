@@ -1,8 +1,8 @@
 <img src="icons/diago-text.png" width="300" alt="DIAGO">
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/emiago/diago)](https://goreportcard.com/report/github.com/emiago/diago)
+[![Go Report Card](https://goreportcard.com/badge/github.com/rglonek/diago)](https://goreportcard.com/report/github.com/rglonek/diago)
 ![Coverage](https://img.shields.io/badge/coverage-61.1%25-blue)
-![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/emiago/diago)
+![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/rglonek/diago)
 
 Short of **dialog + GO**.  
 **Library for building VOIP solutions in GO!**
@@ -18,7 +18,7 @@ Quick links:
 - [Getting started](https://emiago.github.io/diago/docs/getting_started/)
 - [Demo Examples](https://emiago.github.io/diago/docs/examples/)
 - [API Docs](https://emiago.github.io/diago/docs/api_docs/)
-- [GO Docs](https://pkg.go.dev/github.com/emiago/diago)
+- [GO Docs](https://pkg.go.dev/github.com/rglonek/diago)
 
 *If you find this project useful and you want to support/sponzor or need help with your projects, you can contact me more on*
 [mail](mailto:emirfreelance91@gmail.com).

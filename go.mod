@@ -4,9 +4,9 @@ go 1.24.0
 
 require (
 	github.com/creasty/defaults v1.8.0
-	github.com/emiago/diago v0.13.0
 	github.com/emiago/sipgo v0.29.0
 	github.com/lithammer/shortuuid v3.0.0+incompatible
+	github.com/rglonek/diago v0.13.101
 	github.com/rglonek/logger v0.2.2
 	github.com/rs/zerolog v1.33.0
 	gopkg.in/yaml.v3 v3.0.1

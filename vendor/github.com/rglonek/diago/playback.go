@@ -11,8 +11,8 @@ import (
 	"path"
 	"sync"
 
-	"github.com/emiago/diago/audio"
-	"github.com/emiago/diago/media"
+	"github.com/rglonek/diago/audio"
+	"github.com/rglonek/diago/media"
 )
 
 var (
