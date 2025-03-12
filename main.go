@@ -6,15 +6,20 @@ import (
 	"log"
 	"os"
 	"sip-spam-filter/pkg/sipspamfilter"
+	"strings"
+
+	_ "embed"
 
 	"github.com/creasty/defaults"
 	"github.com/rglonek/logger"
 	"gopkg.in/yaml.v3"
 )
 
-var version = "0.2"
+//go:embed VERSION
+var version string
 
 func main() {
+	version = strings.Trim(version, "\n\r\t ")
 	log.Println("=-=-=-=-= SIP-SPAM-FILTER v" + version + " =-=-=-=-=")
 	configPath := flag.String("config", "", "path to config file")
 	flag.Parse()

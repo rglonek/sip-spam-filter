@@ -1,13 +1,14 @@
-log_level: 4             # Log level 0=none, 1=critical, 2=error, 3=warning, 4=info, 5=debug, 6=detail
-local_addr: "0.0.0.0:0"  # Local address to bind to
-country_code: "44"       # Country code to use for international numbers
+log_level: 4                         # Log level 0=none, 1=critical, 2=error, 3=warning, 4=info, 5=debug, 6=detail
+local_addr: "0.0.0.0:0"              # Local address to bind to for outbound calls
+local_addr_inbound: "udp:0.0.0.0:0"  # Local address to bind to for inbound calls
+country_code: "44"                   # Country code to use for international numbers
 sip:
   user: ""                # SIP username
   password: ""            # SIP password 
   host: ""                # SIP server hostname
   port: 5060              # SIP server port
   expiry: 500s            # SIP registration expiry seconds
-audit_files: # if any of these exist, audit log will be written to them
+audit_files:          # if any of these exist, audit log will be written to them
   blocked_numbers: "" # path to file, format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
   allowed_numbers: "" # path to file, format: timestamp,number (timestamp in RFC3339 format)
 spam:

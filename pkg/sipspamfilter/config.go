@@ -36,12 +36,13 @@ func (t timeDuration) MarshalYAML() (interface{}, error) {
 }
 
 type SpamFilterConfig struct {
-	LogLevel    int                  `json:"log_level" yaml:"log_level" default:"4"`
-	LocalAddr   string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
-	CountryCode string               `json:"country_code" yaml:"country_code" default:"44"`
-	SIP         SpamFilterSip        `json:"sip" yaml:"sip"`
-	AuditFiles  SpamFilterAuditFiles `json:"audit_files" yaml:"audit_files"`
-	Spam        SpamFilterSpam       `json:"spam" yaml:"spam"`
+	LogLevel         int                  `json:"log_level" yaml:"log_level" default:"4"`
+	LocalAddr        string               `json:"local_addr" yaml:"local_addr" default:"0.0.0.0:0"`
+	LocalAddrInbound string               `json:"local_addr_inbound" yaml:"local_addr_inbound" default:"udp:0.0.0.0:0"`
+	CountryCode      string               `json:"country_code" yaml:"country_code" default:"44"`
+	SIP              SpamFilterSip        `json:"sip" yaml:"sip"`
+	AuditFiles       SpamFilterAuditFiles `json:"audit_files" yaml:"audit_files"`
+	Spam             SpamFilterSpam       `json:"spam" yaml:"spam"`
 }
 
 type SpamFilterSip struct {

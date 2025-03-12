@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -95,7 +97,28 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 
 	// create a new call handler
 	log.Info("Creating new call handler")
-	dg := diago.NewDiago(ua, diago.WithClient(client))
+	tranData := strings.Split(cfg.config.LocalAddrInbound, ":")
+	if len(tranData) != 3 {
+		return fmt.Errorf("invalid inbound transport: %s, should be <transport>:<host>:<port>", cfg.config.LocalAddrInbound)
+	}
+	switch tranData[0] {
+	case "udp", "tcp":
+	default:
+		return fmt.Errorf("invalid inbound transport: %s", tranData[0])
+	}
+	bindPort, err := strconv.Atoi(tranData[2])
+	if err != nil {
+		return fmt.Errorf("invalid inbound port: %s", tranData[2])
+	}
+	if net.ParseIP(tranData[1]) == nil {
+		return fmt.Errorf("invalid inbound host: %s", tranData[1])
+	}
+	tran := diago.Transport{
+		Transport: tranData[0],
+		BindHost:  tranData[1],
+		BindPort:  bindPort,
+	}
+	dg := diago.NewDiago(ua, diago.WithClient(client), diago.WithTransport(tran))
 
 	// start the call handler
 	log.Info("Starting call handler")
@@ -111,11 +134,12 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 	go func() {
 		log.Info("Registering with SIP server")
 		err = dg.Register(context.TODO(), sip.Uri{
-			Scheme:   "sip",
-			User:     cfg.config.SIP.User,
-			Password: string(cfg.config.SIP.Password),
-			Host:     cfg.config.SIP.Host,
-			Port:     cfg.config.SIP.Port,
+			Scheme:    "sip",
+			User:      cfg.config.SIP.User,
+			Password:  string(cfg.config.SIP.Password),
+			Host:      cfg.config.SIP.Host,
+			Port:      cfg.config.SIP.Port,
+			UriParams: sip.NewParams().Add("transport", tran.Transport),
 		}, diago.RegisterOptions{
 			Username: cfg.config.SIP.User,
 			Password: string(cfg.config.SIP.Password),

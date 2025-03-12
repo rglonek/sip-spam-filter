@@ -9,9 +9,10 @@ This is a simple SIP spam filter that blocks incoming calls from known spam numb
 This is the full yaml config file. The values shown below are the defaults applied when a value is not specified in the config file.
 
 ```yaml
-log_level: 4             # Log level 0=none, 1=critical, 2=error, 3=warning, 4=info, 5=debug, 6=detail
-local_addr: "0.0.0.0:0"  # Local address to bind to
-country_code: "44"       # Country code to use for international numbers
+log_level: 4                         # Log level 0=none, 1=critical, 2=error, 3=warning, 4=info, 5=debug, 6=detail
+local_addr: "0.0.0.0:0"              # Local address to bind to for outbound calls
+local_addr_inbound: "udp:0.0.0.0:0"  # Local address to bind to for inbound calls
+country_code: "44"                   # Country code to use for international numbers
 sip:
   user: ""                # SIP username
   password: ""            # SIP password 
@@ -44,9 +45,14 @@ Level | Name | Description
 
 The log level will also be applied to the SIP library.
 
-## Local address and country code
+## Local addresses
 
-The local address is the address and port that the spam filter will listen on. The `0.0.0.0:0` is normally ok as it means any address, random port.
+Parameter  | Description
+--- | ---
+`local_addr` | The local address is the address and port that the spam filter will bind to in order to connect from. The `0.0.0.0:0` is normally ok as it means any address, random port.
+`local_addr_inbound` | The protocol to use for SIP, and IP:PORT to listen on for inbound calls. Due to the way the spam filter works, this should not need to be routable from the internet.
+
+## Country code
 
 The country code is the country code to use for international numbers. This is normally the country code of the SIP server or the number that is registering with the SIP server. The country code is used to convert the caller ID number to E.164 format for the blacklist lookup. It should be just the country code digits, without a `00` or `+` prefix.
 
