@@ -97,28 +97,11 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 
 	// create a new call handler
 	log.Info("Creating new call handler")
-	tranData := strings.Split(cfg.config.LocalAddrInbound, ":")
-	if len(tranData) != 3 {
-		return fmt.Errorf("invalid inbound transport: %s, should be <transport>:<host>:<port>", cfg.config.LocalAddrInbound)
-	}
-	switch tranData[0] {
-	case "udp", "tcp":
-	default:
-		return fmt.Errorf("invalid inbound transport: %s", tranData[0])
-	}
-	bindPort, err := strconv.Atoi(tranData[2])
+	tran, err := cfg.initTransport()
 	if err != nil {
-		return fmt.Errorf("invalid inbound port: %s", tranData[2])
+		return err
 	}
-	if net.ParseIP(tranData[1]) == nil {
-		return fmt.Errorf("invalid inbound host: %s", tranData[1])
-	}
-	tran := diago.Transport{
-		Transport: tranData[0],
-		BindHost:  tranData[1],
-		BindPort:  bindPort,
-	}
-	dg := diago.NewDiago(ua, diago.WithClient(client), diago.WithTransport(tran))
+	dg := diago.NewDiago(ua, diago.WithClient(client), diago.WithTransport(*tran))
 
 	// start the call handler
 	log.Info("Starting call handler")
@@ -259,4 +242,30 @@ func (cfg *spamFilter) initSignalHandlers(client *sipgo.Client, ua *sipgo.UserAg
 		}
 	}()
 	return exiter
+}
+
+func (cfg *spamFilter) initTransport() (tr *diago.Transport, err error) {
+	tranData := strings.Split(cfg.config.LocalAddrInbound, ":")
+	if len(tranData) != 3 {
+		return nil, fmt.Errorf("invalid inbound transport: %s, should be <transport>:<host>:<port>", cfg.config.LocalAddrInbound)
+	}
+	tranData[0] = strings.ToLower(tranData[0])
+	switch tranData[0] {
+	case "udp", "tcp":
+	default:
+		return nil, fmt.Errorf("invalid inbound transport: %s", tranData[0])
+	}
+	bindPort, err := strconv.Atoi(tranData[2])
+	if err != nil {
+		return nil, fmt.Errorf("invalid inbound port: %s", tranData[2])
+	}
+	if net.ParseIP(tranData[1]) == nil {
+		return nil, fmt.Errorf("invalid inbound host: %s", tranData[1])
+	}
+	tran := diago.Transport{
+		Transport: tranData[0],
+		BindHost:  tranData[1],
+		BindPort:  bindPort,
+	}
+	return &tran, nil
 }
