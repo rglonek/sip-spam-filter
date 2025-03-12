@@ -3,6 +3,7 @@ package sipspamfilter
 import (
 	"bufio"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -23,15 +24,17 @@ import (
 )
 
 type spamFilter struct {
-	config              *SpamFilterConfig
-	blacklistNumbers    []*blacklist
-	blacklistLock       sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
-	parserLock          sync.Mutex   // only one parser at a time, all others will be blocked and queued
-	log                 *logger.Logger
-	auditBlockedNumbers *os.File
-	auditAllowedNumbers *os.File
-	auditFileSIGHUPLock sync.RWMutex
-	stats               *stats
+	config                 *SpamFilterConfig
+	blacklistNumbers       []*blacklist
+	blacklistLock          sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
+	parserLock             sync.Mutex   // only one parser at a time, all others will be blocked and queued
+	log                    *logger.Logger
+	auditBlockedNumbers    *os.File
+	auditBlockedNumbersCSV *csv.Writer
+	auditAllowedNumbers    *os.File
+	auditAllowedNumbersCSV *csv.Writer
+	auditFileSIGHUPLock    sync.RWMutex
+	stats                  *stats
 }
 
 type blacklist struct {
@@ -213,6 +216,7 @@ func (cfg *spamFilter) initSignalHandlers(client *sipgo.Client, ua *sipgo.UserAg
 		cfg.log.Info("Received interrupt signal, shutting down")
 		client.Close()
 		ua.Close()
+		cfg.closeAuditFiles(true)
 		exiter <- nil
 	}()
 	go func() {

@@ -66,6 +66,8 @@ The audit files are written to the location specified in the config file. If the
 
 If the audit files are not specified in the config file, then no audit log will be written.
 
+The audit files are `CSV` format, as specified below. The first line written when the files are created is the header with field names.
+
 Audit File | Format | Timestamp Format
 --- | --- | ---
 blocked_numbers.log | timestamp,number,blocklist_file_name,blocklist_file_line_number | RFC3339
