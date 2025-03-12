@@ -50,7 +50,7 @@ type SpamFilterSip struct {
 	Password  password     `json:"password" yaml:"password"`
 	Host      string       `json:"host" yaml:"host"`
 	Port      int          `json:"port" yaml:"port" default:"5060"`
-	Expiry    timeDuration `json:"expiry" yaml:"expiry" default:"500s"`
+	Expiry    timeDuration `json:"expiry" yaml:"expiry" default:"10m"`
 	UserAgent string       `json:"user_agent" yaml:"user_agent"`
 }
 

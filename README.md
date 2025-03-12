@@ -60,6 +60,10 @@ The country code is the country code to use for international numbers. This is n
 
 The SIP configuration is used to configure the SIP server that the spam filter will use to register with.
 
+Expiry is the expiry value that is sent to the server. Once the expiry is reached, the SIP server will consider this client dead and forcefully remove it. A default config (usually recommended by most SIP providers) of 10 minutes is set.
+
+The client will attempt registration refresh at half the registration expiry, per standard best-practices.
+
 ## Audit Files
 
 The audit files are written to the location specified in the config file. If the file does not exist, it will be created. If the file exists, it will be appended to.

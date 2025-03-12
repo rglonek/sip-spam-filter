@@ -7,7 +7,7 @@ sip:
   password: ""            # SIP password 
   host: ""                # SIP server hostname
   port: 5060              # SIP server port
-  expiry: 500s            # SIP registration expiry seconds
+  expiry: 10m             # SIP registration expiry seconds
 audit_files:          # if any of these exist, audit log will be written to them
   blocked_numbers: "" # path to file, format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
   allowed_numbers: "" # path to file, format: timestamp,number (timestamp in RFC3339 format)

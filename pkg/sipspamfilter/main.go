@@ -127,9 +127,10 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 			Port:      cfg.config.SIP.Port,
 			UriParams: sip.NewParams().Add("transport", tran.Transport),
 		}, diago.RegisterOptions{
-			Username: cfg.config.SIP.User,
-			Password: string(cfg.config.SIP.Password),
-			Expiry:   cfg.config.SIP.Expiry.ToDuration(),
+			Username:      cfg.config.SIP.User,
+			Password:      string(cfg.config.SIP.Password),
+			Expiry:        cfg.config.SIP.Expiry.ToDuration(),     // registration expiry sent to the server
+			RetryInterval: cfg.config.SIP.Expiry.ToDuration() / 2, // retry at half the expiry time
 			ExtraHeaders: []sip.Header{
 				sip.NewHeader("User-Agent", cfg.config.SIP.UserAgent),
 			},
