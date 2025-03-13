@@ -10,16 +10,16 @@ import (
 func BenchmarkBlacklistLookup(b *testing.B) {
 	testFileCount := 1000
 	numbersPerFile := 1000
-	bln := []*blacklist{}
+	bln := []*numberList{}
 	for i := 0; i < testFileCount; i++ {
-		numbers := make(map[string]blacklistNumber)
+		numbers := make(map[string]number)
 		for j := 0; j < numbersPerFile; j++ {
-			numbers[fmt.Sprintf("+447501234567%d", j)] = blacklistNumber{
+			numbers[fmt.Sprintf("+447501234567%d", j)] = number{
 				lineNumber: j,
 				comment:    fmt.Sprintf("some long-add comment explaining why this number is blacklisted-%d", j),
 			}
 		}
-		bln = append(bln, &blacklist{
+		bln = append(bln, &numberList{
 			fileName: fmt.Sprintf("./blacklist/blacklist-file-name-long-%d.txt", i),
 			numbers:  numbers,
 		})

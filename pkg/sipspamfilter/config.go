@@ -59,11 +59,13 @@ type SpamFilterSpam struct {
 	AnswerDelay      timeDuration `json:"answer_delay" yaml:"answer_delay" default:"100ms"`
 	HangupDelay      timeDuration `json:"hangup_delay" yaml:"hangup_delay" default:"1s"`
 	BlacklistPaths   []string     `json:"blacklist_paths" yaml:"blacklist_paths"`
+	WhitelistPaths   []string     `json:"whitelist_paths" yaml:"whitelist_paths"`
 }
 
 type SpamFilterAuditFiles struct {
-	BlockedNumbers string `json:"blocked_numbers" yaml:"blocked_numbers"`
-	AllowedNumbers string `json:"allowed_numbers" yaml:"allowed_numbers"`
+	BlockedNumbers     string `json:"blocked_numbers" yaml:"blocked_numbers"`
+	AllowedNumbers     string `json:"allowed_numbers" yaml:"allowed_numbers"`
+	WhitelistedNumbers string `json:"whitelisted_numbers" yaml:"whitelisted_numbers"`
 }
 
 type password string

@@ -25,6 +25,12 @@ func (cfg *spamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	newCallerID := cfg.convertToInternational(callerID)
 	log = log.WithPrefix(fmt.Sprintf("[OCID=%s] [CID=%s] ", callerID, newCallerID))
 
+	if whitelistFile, whitelistLineNo, whitelistComment := cfg.isWhitelisted(newCallerID); whitelistFile != nil {
+		log.Info("Caller on whitelist file=%s line=%d comment=%s", *whitelistFile, whitelistLineNo, *whitelistComment)
+		cfg.auditLogWhitelisted(newCallerID, *whitelistFile, whitelistLineNo)
+		return
+	}
+
 	var blacklistFile *string
 	var blacklistLineNo int
 	var blacklistComment *string
@@ -63,6 +69,22 @@ func (cfg *spamFilter) callHandler(inDialog *diago.DialogServerSession) {
 	inDialog.Close()
 
 	log.Info("Done")
+}
+
+func (cfg *spamFilter) isWhitelisted(callerID string) (matchedFileName *string, matchedLineNo int, comment *string) {
+	start := time.Now()
+	cfg.whitelistLock.RLock()
+	defer cfg.whitelistLock.RUnlock()
+	for _, whitelist := range cfg.whitelistNumbers {
+		if val, ok := whitelist.numbers[callerID]; ok {
+			fn := whitelist.fileName
+			ln := val.lineNumber
+			cm := val.comment
+			cfg.stats.addWhitelisted(time.Since(start))
+			return &fn, ln, &cm
+		}
+	}
+	return nil, 0, nil
 }
 
 func (cfg *spamFilter) isSpam(callerID string) (matchedFileName *string, matchedLineNo int, comment *string) {

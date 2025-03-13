@@ -8,9 +8,10 @@ sip:
   host: ""                # SIP server hostname
   port: 5060              # SIP server port
   expiry: 10m             # SIP registration expiry seconds
-audit_files:          # if any of these exist, audit log will be written to them
-  blocked_numbers: "" # path to file, format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
-  allowed_numbers: "" # path to file, format: timestamp,number (timestamp in RFC3339 format)
+audit_files:              # if any of these exist, audit log will be written to them
+  blocked_numbers: ""     # path to file, format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
+  allowed_numbers: ""     # path to file, format: timestamp,number (timestamp in RFC3339 format)
+  whitelisted_numbers: "" # path to file, format: timestamp,number,whitelist_file_name,whitelist_file_line_number (timestamp in RFC3339 format)
 spam:
   try_to_answer_delay: 100ms       # Time to wait before trying to answer spam calls (SIP 100->trying)
   answer_delay: 100ms              # Time to wait before answering spam calls (SIP 183->answered)
@@ -18,3 +19,6 @@ spam:
   blacklist_paths:                 # Paths to blacklist files/directories
     #- "./blacklists/"
     #- "./blacklist.txt"
+  whitelist_paths:                 # Paths to whitelist files/directories; these take precedence over blacklists
+    #- "./whitelists/"
+    #- "./whitelist.txt"

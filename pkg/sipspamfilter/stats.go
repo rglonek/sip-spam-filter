@@ -8,11 +8,12 @@ import (
 )
 
 type stats struct {
-	lock            sync.RWMutex
-	blockedCount    int
-	allowedCount    int
-	lookupTotalTime time.Duration
-	oldCounts       int
+	lock             sync.RWMutex
+	blockedCount     int
+	allowedCount     int
+	whitelistedCount int
+	lookupTotalTime  time.Duration
+	oldCounts        int
 }
 
 func (s *stats) addBlocked(lookupTime time.Duration) {
@@ -29,12 +30,20 @@ func (s *stats) addAllowed(lookupTime time.Duration) {
 	s.lookupTotalTime += lookupTime
 }
 
+func (s *stats) addWhitelisted(lookupTime time.Duration) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.whitelistedCount++
+	s.lookupTotalTime += lookupTime
+}
+
 func (s *stats) print(log *logger.Logger) {
 	s.lock.Lock()
 	allowedCount := s.allowedCount
 	blockedCount := s.blockedCount
+	whitelistedCount := s.whitelistedCount
 	lookupTotalTime := s.lookupTotalTime
-	total := blockedCount + allowedCount
+	total := blockedCount + allowedCount + whitelistedCount
 	if s.oldCounts == total {
 		s.lock.Unlock()
 		return
@@ -45,5 +54,5 @@ func (s *stats) print(log *logger.Logger) {
 	if total > 0 {
 		avgLookupTime = lookupTotalTime / time.Duration(total)
 	}
-	log.Info("Stats: blocked=%d allowed=%d averageLookupTime=%s", blockedCount, allowedCount, avgLookupTime)
+	log.Info("Stats: blocked=%d allowed=%d whitelisted=%d averageLookupTime=%s", blockedCount, allowedCount, whitelistedCount, avgLookupTime)
 }

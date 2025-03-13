@@ -8,14 +8,35 @@ import (
 	"strings"
 )
 
-func (cfg *spamFilter) parseBlacklist() error {
+func (cfg *spamFilter) parseNumberLists() error {
 	cfg.parserLock.Lock()
 	defer cfg.parserLock.Unlock()
-	var newList []*blacklist
-	for _, path := range cfg.config.Spam.BlacklistPaths {
+
+	newBlacklist, err := cfg.parseNumberList(cfg.config.Spam.BlacklistPaths)
+	if err != nil {
+		return err
+	}
+
+	newWhitelist, err := cfg.parseNumberList(cfg.config.Spam.WhitelistPaths)
+	if err != nil {
+		return err
+	}
+
+	cfg.blacklistLock.Lock()
+	cfg.whitelistLock.Lock()
+	defer cfg.blacklistLock.Unlock()
+	defer cfg.whitelistLock.Unlock()
+	cfg.blacklistNumbers = newBlacklist
+	cfg.whitelistNumbers = newWhitelist
+
+	return nil
+}
+
+func (cfg *spamFilter) parseNumberList(paths []string) (newList []*numberList, err error) {
+	for _, path := range paths {
 		fileInfo, err := os.Stat(path)
 		if err != nil {
-			return fmt.Errorf("could not access path %s: %v", path, err)
+			return nil, fmt.Errorf("could not access path %s: %v", path, err)
 		}
 
 		if fileInfo.IsDir() {
@@ -34,30 +55,27 @@ func (cfg *spamFilter) parseBlacklist() error {
 				return nil
 			})
 			if err != nil {
-				return fmt.Errorf("error walking directory %s: %v", path, err)
+				return nil, fmt.Errorf("error walking directory %s: %v", path, err)
 			}
 		} else {
 			// Handle single file
 			bl, err := cfg.parseFile(path)
 			if err != nil {
-				return fmt.Errorf("error parsing file %s: %v", path, err)
+				return nil, fmt.Errorf("error parsing file %s: %v", path, err)
 			}
 			newList = append(newList, bl)
 		}
 	}
 
-	cfg.blacklistLock.Lock()
-	defer cfg.blacklistLock.Unlock()
-	cfg.blacklistNumbers = newList
-	return nil
+	return newList, nil
 }
 
 // Helper function to parse individual files
-func (cfg *spamFilter) parseFile(filePath string) (*blacklist, error) {
+func (cfg *spamFilter) parseFile(filePath string) (*numberList, error) {
 	log := cfg.log.WithPrefix(fmt.Sprintf("parseFile: %s: ", filePath))
-	newList := &blacklist{
+	newList := &numberList{
 		fileName: filePath,
-		numbers:  make(map[string]blacklistNumber),
+		numbers:  make(map[string]number),
 	}
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -95,7 +113,7 @@ func (cfg *spamFilter) parseFile(filePath string) (*blacklist, error) {
 		if val, ok := newList.numbers[line]; ok {
 			log.Warn("Ignoring duplicate number on line number %d (first seen on line %d) in file %s", lineNo, val.lineNumber, filePath)
 		} else {
-			newList.numbers[line] = blacklistNumber{
+			newList.numbers[line] = number{
 				lineNumber: lineNo,
 				comment:    comment,
 			}

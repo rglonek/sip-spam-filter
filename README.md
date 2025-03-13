@@ -18,10 +18,11 @@ sip:
   password: ""            # SIP password 
   host: ""                # SIP server hostname
   port: 5060              # SIP server port
-  expiry: 500s            # SIP registration expiry
-audit_files: # if any of these exist, audit log will be written to them
-  blocked_numbers: "" # path to file, format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
-  allowed_numbers: "" # path to file, format: timestamp,number (timestamp in RFC3339 format)
+  expiry: 10m             # SIP registration expiry
+audit_files:              # if any of these exist, audit log will be written to them
+  blocked_numbers: ""     # path to file, format: timestamp,number,blocklist_file_name,blocklist_file_line_number (timestamp in RFC3339 format)
+  allowed_numbers: ""     # path to file, format: timestamp,number (timestamp in RFC3339 format)
+  whitelisted_numbers: "" # path to file, format: timestamp,number,whitelist_file_name,whitelist_file_line_number (timestamp in RFC3339 format)
 spam:
   try_to_answer_delay: 100ms       # Time to wait before trying to answer spam calls (SIP 100->trying)
   answer_delay: 100ms              # Time to wait before answering spam calls (SIP 183->answered)
@@ -29,6 +30,9 @@ spam:
   blacklist_paths:                 # Paths to blacklist files/directories
     #- "./blacklists/"
     #- "./blacklist.txt"
+  whitelist_paths:                 # Paths to whitelist files/directories; these take precedence over blacklists
+    #- "./whitelists/"
+    #- "./whitelist.txt"
 ```
 
 ## Log Levels
@@ -75,6 +79,7 @@ The audit files are `CSV` format, as specified below. The first line written whe
 Audit File | Format | Timestamp Format
 --- | --- | ---
 blocked_numbers.log | timestamp,number,blocklist_file_name,blocklist_file_line_number | RFC3339
+whitelisted_numbers.log | timestamp,number,whitelist_file_name,whitelist_file_line_number | RFC3339
 allowed_numbers.log | timestamp,number | RFC3339
 
 ## Spam
@@ -87,14 +92,17 @@ try_to_answer_delay | Millseconds to wait before sending a "trying to answer" me
 answer_delay | Millseconds to wait after sending "trying to answer", before answering the call
 hangup_delay | Milliseconds to wait before hanging up spam calls after accepting the call
 blacklist_paths | Paths to blacklist files/directories
+whitelist_paths | Paths to whitelist files/directories
 
-## Blacklist
+## Blacklist and Whitelist
 
-The blacklist paths is a list of files or directories that contain the blacklist numbers. The directories are checked recursively.
+The paths are a list of files or directories that contain the blacklist/whitelist numbers. The directories are checked recursively.
 
-Each line in the blacklist files contains a single number.
+Each line in the list files contains a single number.
 
 The numbers should be in E.164 format, meaning they should start with a + and then the country code and then the number (see example blacklist.txt in this repo).
+
+If a number is in the whitelist, it will be allowed and blacklists will not be checked.
 
 # Signals
 

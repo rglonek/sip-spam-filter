@@ -24,25 +24,29 @@ import (
 )
 
 type spamFilter struct {
-	config                 *SpamFilterConfig
-	blacklistNumbers       []*blacklist
-	blacklistLock          sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
-	parserLock             sync.Mutex   // only one parser at a time, all others will be blocked and queued
-	log                    *logger.Logger
-	auditBlockedNumbers    *os.File
-	auditBlockedNumbersCSV *csv.Writer
-	auditAllowedNumbers    *os.File
-	auditAllowedNumbersCSV *csv.Writer
-	auditFileSIGHUPLock    sync.RWMutex
-	stats                  *stats
+	config                     *SpamFilterConfig
+	blacklistNumbers           []*numberList
+	blacklistLock              sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
+	whitelistNumbers           []*numberList
+	whitelistLock              sync.RWMutex // if we are reloading, we lock, if we are reading, we rlock
+	parserLock                 sync.Mutex   // only one parser at a time, all others will be blocked and queued
+	log                        *logger.Logger
+	auditBlockedNumbers        *os.File
+	auditBlockedNumbersCSV     *csv.Writer
+	auditAllowedNumbers        *os.File
+	auditAllowedNumbersCSV     *csv.Writer
+	auditWhitelistedNumbers    *os.File
+	auditWhitelistedNumbersCSV *csv.Writer
+	auditFileSIGHUPLock        sync.RWMutex
+	stats                      *stats
 }
 
-type blacklist struct {
+type numberList struct {
 	fileName string
-	numbers  map[string]blacklistNumber
+	numbers  map[string]number
 }
 
-type blacklistNumber struct {
+type number struct {
 	lineNumber int
 	comment    string
 }
@@ -69,7 +73,7 @@ func Run(config *SpamFilterConfig, log *logger.Logger) error {
 
 	// parse the blacklists
 	log.Info("Parsing blacklists")
-	err := cfg.parseBlacklist()
+	err := cfg.parseNumberLists()
 	if err != nil {
 		return err
 	}
@@ -226,7 +230,7 @@ func (cfg *spamFilter) initSignalHandlers(client *sipgo.Client, ua *sipgo.UserAg
 		for {
 			<-sigUsr1Chan
 			cfg.log.Info("SIGUSR1: Reloading blacklists")
-			if err := cfg.parseBlacklist(); err != nil {
+			if err := cfg.parseNumberLists(); err != nil {
 				cfg.log.Error("Error reloading blacklists: %v", err)
 			} else {
 				cfg.log.Info("SIGUSR1: Blacklists reloaded")

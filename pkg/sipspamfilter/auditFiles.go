@@ -43,6 +43,21 @@ func (cfg *spamFilter) reopenAuditFiles() error {
 			}
 		}
 	}
+	if cfg.config.AuditFiles.WhitelistedNumbers != "" {
+		cfg.auditWhitelistedNumbers, err = os.OpenFile(cfg.config.AuditFiles.WhitelistedNumbers, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			cfg.auditWhitelistedNumbers = nil
+			return err
+		}
+		cfg.auditWhitelistedNumbersCSV = csv.NewWriter(cfg.auditWhitelistedNumbers)
+		stat, err := cfg.auditWhitelistedNumbers.Stat()
+		if err == nil && stat.Size() == 0 {
+			err = writeCSV(cfg.auditWhitelistedNumbersCSV, []string{"timestamp", "number", "whitelist_file_name", "whitelist_file_line_number"})
+			if err != nil {
+				cfg.log.Error("Audit log: Error writing header to audit whitelisted numbers: %v", err)
+			}
+		}
+	}
 	return nil
 }
 
@@ -64,6 +79,17 @@ func (cfg *spamFilter) auditLogBlocked(number string, fileName string, lineNo in
 		err := writeCSV(cfg.auditBlockedNumbersCSV, []string{time.Now().Format(time.RFC3339), number, fileName, strconv.Itoa(lineNo)})
 		if err != nil {
 			cfg.log.Error("Audit log: Error writing to audit blocked numbers: %v", err)
+		}
+	}
+}
+
+func (cfg *spamFilter) auditLogWhitelisted(number string, fileName string, lineNo int) {
+	cfg.auditFileSIGHUPLock.RLock()
+	defer cfg.auditFileSIGHUPLock.RUnlock()
+	if cfg.auditWhitelistedNumbers != nil {
+		err := writeCSV(cfg.auditWhitelistedNumbersCSV, []string{time.Now().Format(time.RFC3339), number, fileName, strconv.Itoa(lineNo)})
+		if err != nil {
+			cfg.log.Error("Audit log: Error writing to audit whitelisted numbers: %v", err)
 		}
 	}
 }
@@ -90,6 +116,15 @@ func (cfg *spamFilter) closeAuditFiles(lock bool) {
 		cfg.auditAllowedNumbers.Close()
 		cfg.auditAllowedNumbersCSV = nil
 		cfg.auditAllowedNumbers = nil
+	}
+	if cfg.auditWhitelistedNumbers != nil {
+		cfg.auditWhitelistedNumbersCSV.Flush()
+		if err := cfg.auditWhitelistedNumbersCSV.Error(); err != nil {
+			cfg.log.Error("Audit log: Error flushing audit whitelisted numbers: %v", err)
+		}
+		cfg.auditWhitelistedNumbers.Close()
+		cfg.auditWhitelistedNumbersCSV = nil
+		cfg.auditWhitelistedNumbers = nil
 	}
 }
 
